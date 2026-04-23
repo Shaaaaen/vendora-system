@@ -358,7 +358,7 @@ def products():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
 
-    cursor.execute("SELECT * FROM Product WHERE user_id = %s", (user_id,))
+    cursor.execute("SELECT * FROM product WHERE user_id = %s", (user_id,))
     products = cursor.fetchall()
 
     cursor.close()
