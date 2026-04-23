@@ -1,19 +1,14 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('filterDate').value = today;
-    
     await loadDailySales();
     await loadSalesHistory();
 
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('filterDate').value = today;
     document.getElementById('filterDate').addEventListener('change', loadSalesHistory);
 });
 
 let products = [];
 const savedToday = {};
-
-// ═══════════════════════════════════════
-// DAILY SALES SECTION
-// ═══════════════════════════════════════
 
 async function loadDailySales() {
     const container = document.getElementById('dailySalesList');
@@ -145,10 +140,6 @@ function enableEdit(product_id) {
     });
 }
 
-// ═══════════════════════════════════════
-// ADD SALE MODAL
-// ═══════════════════════════════════════
-
 function openAddSaleModal() {
     const select = document.getElementById('modalProductSelect');
     select.innerHTML = '<option value="">-- Choose a product --</option>';
@@ -194,73 +185,29 @@ async function submitModalSale() {
     }
 }
 
-// ═══════════════════════════════════════
-// SALES HISTORY SECTION
-// ═══════════════════════════════════════
-
 function clearDateFilter() {
     document.getElementById('filterDate').value = '';
     loadSalesHistory();
 }
 
-
-
 async function loadSalesHistory() {
+    const res       = await fetch('/api/get_sales');
+    const allSales  = await res.json();
     const sym       = window.currencySymbol || 'RM';
     const rate      = parseFloat(window.currencyRate || '1') || 1;
     const fmtS      = (v) => sym + ' ' + (parseFloat(v) * rate).toFixed(2);
     const salesList = document.getElementById('salesList');
+
     const filterDate = document.getElementById('filterDate').value;
-    if (!filterDate) {
-        salesList.innerHTML = `
-            <div style="
-                text-align:center;
-                padding:40px 20px;
-                color:#7a5c3a;
-            ">
-                <div style="font-size:38px; margin-bottom:10px;">📅</div>
-                <div style="font-size:16px; font-weight:600;">Please select a date</div>
-                <div style="font-size:13px; color:#aaa;">Choose a date to view sales records</div>
-            </div>
-        `;
-        return;
-    }
+    const sales = filterDate
+        ? allSales.filter(sale => {
+            const d = new Date(sale.sale_date);
+            const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            return s === filterDate;
+          })
+        : allSales;
 
-    const sales = allSales.filter(sale => {
-        const d = new Date(sale.sale_date);
-        const s = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-        return s === filterDate;
-    });
-
-    if (!sales.length) {
-        salesList.innerHTML = `
-            <div style="
-                text-align:center;
-                padding:40px 20px;
-                color:#7a5c3a;
-            ">
-                <div style="font-size:40px; margin-bottom:10px;">📭</div>
-                <div style="font-size:16px; font-weight:600; margin-bottom:6px;">
-                    No records found
-                </div>
-                <div style="font-size:13px; color:#aaa; margin-bottom:16px;">
-                    No sales recorded for this date
-                </div>
-
-                <button onclick="quickAddForSelectedDate()" style="
-                    background:#f4c245;
-                    border:none;
-                    padding:10px 18px;
-                    border-radius:10px;
-                    font-weight:600;
-                    cursor:pointer;
-                ">
-                    + Add Sales
-                </button>
-            </div>
-        `;
-        return;
-    }
+    if (!sales.length) { salesList.innerHTML = ''; return; }
 
     const totalRevenue = sales.reduce((sum, s) => sum + parseFloat(s.total_amount), 0);
 
@@ -298,44 +245,9 @@ async function loadSalesHistory() {
         </div>`;
 }
 
-function quickAddForSelectedDate() {
-        const selectedDate = document.getElementById('filterDate').value;
-
-        if (!selectedDate) {
-            alert('Please select a date first.');
-            return;
-        }
-
-
-        setHistMode('single');
-        
-        openHistoricalSaleModal();
-
-        setTimeout(() => {
-            const input = document.getElementById('histDate');
-            if (input) input.value = selectedDate;
-        }, 50);
-    }
-// ═══════════════════════════════════════
-// HISTORICAL SALE MODAL
-// ═══════════════════════════════════════
-
-let histMode = 'single';
-
-function setHistMode(mode) {
-    histMode = mode;
-
-    document.getElementById('singleModeBox').style.display = mode === 'single' ? 'block' : 'none';
-    document.getElementById('multiModeBox').style.display  = mode === 'multi' ? 'block' : 'none';
-
-    document.getElementById('modeSingleBtn')?.classList.toggle('active', mode === 'single');
-    document.getElementById('modeMultiBtn')?.classList.toggle('active', mode === 'multi');
-}
-
 let histProducts = [];
 
 async function openHistoricalSaleModal() {
-    setHistMode('single');
     // Set default date to yesterday
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
@@ -362,88 +274,69 @@ function closeHistoricalSaleModal() {
 
 function addHistItem() {
     const container = document.getElementById('histItemsList');
-    container.appendChild(createProductRow());
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:8px;';
+
+    const sel = document.createElement('select');
+    sel.style.cssText = 'flex:1; padding:8px; border-radius:8px; border:1.5px solid #e0c97a; font-size:13px;';
+    sel.innerHTML = '<option value="">-- Select product --</option>';
+    histProducts.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.product_id;
+        opt.textContent = p.product_name;
+        sel.appendChild(opt);
+    });
+
+    const qtyInput = document.createElement('input');
+    qtyInput.type = 'number';
+    qtyInput.min = '1';
+    qtyInput.value = '1';
+    qtyInput.placeholder = 'Qty';
+    qtyInput.style.cssText = 'width:70px; padding:8px; border-radius:8px; border:1.5px solid #e0c97a; font-size:13px;';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '✕';
+    removeBtn.type = 'button';
+    removeBtn.style.cssText = 'background:#e74c3c; color:#fff; border:none; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;';
+    removeBtn.onclick = () => row.remove();
+
+    row.appendChild(sel);
+    row.appendChild(qtyInput);
+    row.appendChild(removeBtn);
+    container.appendChild(row);
 }
 
 async function submitHistoricalSale() {
-    if (histMode === 'single') {
-        const sale_date   = document.getElementById('histDate').value;
-        const total_profit = parseFloat(document.getElementById('histProfit').value);
+    const sale_date   = document.getElementById('histDate').value;
+    const total_profit = parseFloat(document.getElementById('histProfit').value);
 
-        if (!sale_date) { alert('Please select a date.'); return; }
-        if (isNaN(total_profit) || total_profit < 0) { alert('Please enter a valid total profit.'); return; }
+    if (!sale_date) { alert('Please select a date.'); return; }
+    if (isNaN(total_profit) || total_profit < 0) { alert('Please enter a valid total profit.'); return; }
 
-        // Collect optional items
-        const rows = document.getElementById('histItemsList').querySelectorAll('div');
-        const items = [];
-        for (const row of rows) {
-            const sel = row.querySelector('select');
-            const qty = row.querySelector('input[type="number"]');
-            if (sel && sel.value && qty) {
-                items.push({ product_id: parseInt(sel.value), quantity: parseInt(qty.value) || 1 });
-            }
+    // Collect optional items
+    const rows = document.getElementById('histItemsList').querySelectorAll('div');
+    const items = [];
+    for (const row of rows) {
+        const sel = row.querySelector('select');
+        const qty = row.querySelector('input[type="number"]');
+        if (sel && sel.value && qty) {
+            items.push({ product_id: parseInt(sel.value), quantity: parseInt(qty.value) || 1 });
         }
-
-        const res = await fetch('/api/record_historical_sale', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sale_date, total_profit, items })
-        });
-        const result = await res.json();
-
-        if (result.status === 'success') {
-            closeHistoricalSaleModal();
-            await loadSalesHistory();
-            showSaleToast('✅ Historical sale saved!');
-        } else {
-            alert(result.message || 'Error saving historical sale.');
-        }
-        return;
     }
 
-    else {
-        const cards = document.querySelectorAll('#multiHistList .hist-card');
+    const res = await fetch('/api/record_historical_sale', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sale_date, total_profit, items })
+    });
+    const result = await res.json();
 
-        const payload = [];
-
-        cards.forEach(card => {
-
-            const date = card.querySelector('.m-date')?.value;
-            const profit = parseFloat(card.querySelector('.m-profit')?.value);
-
-            if (!date || isNaN(profit)) return;
-
-            const items = [];
-
-            card.querySelectorAll('.m-products > div').forEach(row => {
-                const sel = row.querySelector('select');
-                const qty = row.querySelector('input');
-
-                if (sel?.value) {
-                    items.push({
-                        product_id: parseInt(sel.value),
-                        quantity: parseInt(qty.value) || 1
-                    });
-                }
-            });
-
-            payload.push({
-                sale_date: date,
-                total_profit: profit,
-                items
-            });
-        });
-
-        if (!payload.length) {
-            alert("No valid data");
-            return;
-        }
-
-        fetch('/api/record_historical_sale_batch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ records: payload })
-        });
+    if (result.status === 'success') {
+        closeHistoricalSaleModal();
+        await loadSalesHistory();
+        showSaleToast('✅ Historical sale saved!');
+    } else {
+        alert(result.message || 'Error saving historical sale.');
     }
 }
 
@@ -472,98 +365,3 @@ function formatDate(dateStr) {
         hour: '2-digit', minute: '2-digit'
     });
 }
-
-function addHistRow() {
-    const container = document.getElementById('multiHistList');
-
-    const card = document.createElement('div');
-    card.className = 'hist-card';
-
-    card.style.cssText = `
-        border-bottom: 1px solid #f0e3b5;
-        padding-bottom: 12px;
-        margin-bottom: 12px;
-    `;
-
-    card.innerHTML = `
-        <div class="hist-header" onclick="toggleHist(this)">
-            📆 Sale Date <input type="date" class="m-date" onclick="event.stopPropagation()">
-
-            💰 Total Profit <input type="number" class="m-profit" placeholder="Profit" onclick="event.stopPropagation()">
-
-            🛒 Items Sold <span class="count">0 items</span>
-
-            <span class="hist-arrow">▼</span>
-        </div>
-        
-        <div class="hist-body" style="display:none;">
-            <div class="m-products"></div>
-
-            <button type="button" onclick="addProductRow(this)"style="margin-top:8px; background:#f4c245; border:none; padding:7px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;">
-                + Add Item
-            </button>
-
-        </div>
-        
-        <button type="button" onclick="this.closest('.hist-card').remove()"style="background:#e74c3c;">
-                Remove
-        </button>
-    `;
-
-    container.appendChild(card);
-}
-
-function addProductRow(btn) {
-    const card = btn.closest('.hist-card');
-    const container = card.querySelector('.m-products');
-
-    const row = createProductRow(card);
-    container.appendChild(row);
-
-    updateCount(card);
-}
-
-function createProductRow() {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:8px;';
-
-    const sel = document.createElement('select');
-    sel.style.cssText = 'flex:1; padding:8px; border-radius:8px; border:1.5px solid #e0c97a; font-size:13px;';
-    sel.innerHTML = '<option value="">-- Select product --</option>';
-
-    histProducts.forEach(p => {
-        const opt = document.createElement('option');
-        opt.value = p.product_id;
-        opt.textContent = p.product_name;
-        sel.appendChild(opt);
-    });
-
-    const qtyInput = document.createElement('input');
-    qtyInput.type = 'number';
-    qtyInput.min = '1';
-    qtyInput.value = '1';
-    qtyInput.style.cssText = 'width:70px; padding:8px; border-radius:8px; border:1.5px solid #e0c97a; font-size:13px;';
-
-    const removeBtn = document.createElement('button');
-    removeBtn.textContent = '✕';
-    removeBtn.type = 'button';
-    removeBtn.style.cssText = 'background:#e74c3c; color:#fff; border:none; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;';
-    removeBtn.onclick = () => row.remove();
-
-    row.appendChild(sel);
-    row.appendChild(qtyInput);
-    row.appendChild(removeBtn);
-
-    return row;
-}
-
-function updateCount(card) {
-    const count = card.querySelectorAll('.m-products > div').length;
-    card.querySelector('.count').textContent = `${count} items`;
-}
-
-function toggleHist(el) {
-    const body = el.nextElementSibling;
-    body.style.display = body.style.display === 'block' ? 'none' : 'block';
-}
-
