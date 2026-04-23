@@ -11,7 +11,6 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 from datetime import datetime, timedelta
 from datetime import date as date_obj
-from app import app
 
 # --- Setup ---
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
