@@ -1,0 +1,36 @@
+<div class="sidebar">
+  <div class="menu-item">☰</div>
+  <ul>
+    <!-- My Business: active on ingredients, products, or sales -->
+    <li class="{% if request.path in [url_for('ingredients'), url_for('products'), url_for('sales')] %}active{% endif %}">
+      <a href="{{ url_for('ingredients') }}">
+        <img src="{{ url_for('static', filename='assets/icons/MyBusiness.png') }}">
+        <span>My Business</span>
+      </a>
+    </li>
+
+    <!-- Dashboard -->
+    <li class="{% if request.path == url_for('dashboard') %}active{% endif %}">
+      <a href="{{ url_for('dashboard') }}">
+        <img src="{{ url_for('static', filename='assets/icons/Dashboard.png') }}">
+        <span>Dashboard</span>
+      </a>
+    </li>
+
+    <!-- Forecast -->
+    <li class="{% if request.path == url_for('forecast') %}active{% endif %}">
+      <a href="{{ url_for('forecast') }}">
+        <img src="{{ url_for('static', filename='assets/icons/Forecast.png') }}">
+        <span>Forecast</span>
+      </a>
+    </li>
+
+    <!-- Settings -->
+    <li class="{% if request.path == url_for('settings') %}active{% endif %}">
+      <a href="{{ url_for('settings') }}">
+        <img src="{{ url_for('static', filename='assets/icons/Settings.png') }}">
+        <span>Settings</span>
+      </a>
+    </li>
+  </ul>
+</div>

@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}My Business - Ingredients{% endblock %}
+
+{% block content %}
+<div class="main-content ingredients-page">
+    <!-- TOP BAR -->
+    <div class="top-bar">  
+        <div class="tabs">  
+            <a class="tab active" href="{{ url_for('ingredients') }}">
+                <span>🥬</span>  
+                <span>Ingredients</span>  
+            </a>  
+            <a class="tab" href="{{ url_for('products') }}">
+                <span>🧀</span>  
+                <span>Products</span>  
+            </a>  
+            <a class="tab" href="{{ url_for('sales') }}">
+                <span>📊</span>  
+                <span class="notranslate" data-key="record_sales">Record Sales</span>
+            </a>  
+        </div>  
+
+        <div class="top-bar-right">  
+            <button class="add-btn">+ Add Ingredient</button>  
+        </div>  
+    </div>
+
+    <!-- LOW STOCK BANNER -->
+    {% set low_count = namespace(value=0) %}
+    {% set low_names = [] %}
+    {% for item in ingredients %}
+        {% if item.target_stock > 0 and item.current_stock < item.target_stock %}
+            {% set low_count.value = low_count.value + 1 %}
+            {% if low_names.append(item.ingredient_name) %}{% endif %}
+        {% endif %}
+    {% endfor %}
+    {% if low_count.value > 0 %}
+    <div class="restock-banner" style="display:flex; margin-bottom: 16px;">
+        <div class="restock-banner-left">
+            <div class="restock-icon-circle">{{ low_count.value }}</div>
+            <div class="restock-text">
+                <strong>{{ low_count.value }} item{{ 's' if low_count.value > 1 else '' }} need to restock soon</strong>
+                <p>Low Stock: {{ low_names | join(', ') }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- CARD SECTION -->
+    <div class="card-section">
+        <h3 class="section-title">Ingredients Inventory</h3>
+
+        {% if ingredients %}
+        <div id="ingredientList" class="ingredient-grid">
+            {% for item in ingredients %}
+            {% set percent = ((item.current_stock / item.target_stock) * 100) if item.target_stock > 0 else 100 %}
+            {% set is_low = item.target_stock > 0 and item.current_stock < item.target_stock %}
+            <div class="ingredient-card" 
+                data-id="{{ item.ingredient_id }}" 
+                data-unit="{{ item.unit|default('Unit') }}">
+                <div class="card-header">
+                    <span class="ingredient-icon">🥬</span>
+                    <div class="card-actions">
+                        <button class="btn-edit">Edit</button>
+                        <button class="btn-delete">Delete</button>
+                    </div>
+                </div>
+                <h4>{{ item.ingredient_name }}</h4>
+                <div class="info-row">
+                    <span>Price per {{ item.unit }}:</span>
+                    <strong class="price-display" data-base="{{ item.price_per_unit }}"></strong>
+                </div>
+                <div class="info-row">
+                    <span>Stock:</span>
+                    <strong class="{% if is_low %}text-danger{% else %}text-success{% endif %}">
+                        {{ item.current_stock }} {{ item.unit }}
+                    </strong>
+                </div>
+                <div class="info-row">
+                    <span>Daily Target:</span>
+                    <span>{{ item.target_stock }} {{ item.unit }}</span>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill {% if is_low %}low{% endif %}" style="width: {{ percent if percent <= 100 else 100 }}%;"></div>
+                </div>
+                <small class="percent-text {% if is_low %}text-danger{% endif %}">{{ percent|round(0)|int }}% of daily target</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🥬</div>
+            <h4>No Ingredients Yet</h4>
+            <p>Add ingredients to track inventory and daily targets.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ADD/EDIT INGREDIENT MODAL -->
+<div id="addIngredientModal" class="custom-ingredient-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>➕ Add/Edit Ingredient</h2>
+        </div>
+
+        <form id="addIngredientForm">
+            <div class="modal-body">
+                <!-- Ingredient Name -->
+                <div class="input-block">
+                    <label>🏷️ Ingredient Name</label>
+                    <div class="input-group yellow-bg select-style" id="selectContainer">
+                        <select name="ingredient_name" id="ingredientSelect" onchange="toggleIngredientInput()" required>
+                            <option value="" disabled selected>🔍 Select an ingredient</option>
+                            <option value="others" style="color:#ff3b30;font-weight:bold;">+ Others (Custom Name)</option>
+                            {% for item in ingredients %}
+                                <option value="{{ item.ingredient_name }}">{{ item.ingredient_name }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="dropdown-icon">▼</span>
+                    </div>
+
+                    <div class="input-group white-bg" id="manualInputContainer" style="display:none;margin-top:10px;">
+                        <input type="text" name="ingredient_name_manual" id="ingredientManual" placeholder="Enter new ingredient name">
+                        <button type="button" class="back-btn" onclick="backToSelect()">🔙</button>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="input-block">
+                        <label>💰 Price Per Unit ({{ user.symbol if user and user.symbol else 'RM' }})</label>
+                        <div class="input-group white-bg">
+                            <span class="rm-tag" id="currencyTag">{{ user.symbol if user and user.symbol else 'RM' }}</span>
+                            <input type="number" step="0.01" min="0" name="price_per_unit" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div class="input-block">
+                        <label>⚖️ Unit</label>
+                        <div class="input-group yellow-bg select-style">
+                            <select name="unit" id="unitSelect">
+                                <option value="Unit">Unit (unit)</option>
+                                <option value="kg">Kilogram (kg)</option>
+                                <option value="g">Gram (g)</option>
+                                <option value="l">Litre (l)</option>
+                                <option value="ml">Millilitre (ml)</option>
+                                <option value="pcs">Pieces (pcs)</option>
+                                <option value="bottle">Bottle (bottle)</option>
+                            </select>
+                            <span class="dropdown-icon">▼</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="input-block">
+                        <label>📦 Current Stock</label>
+                        <div class="input-group white-bg">
+                            <input type="number" step="0.01" min="0" name="current_stock" required>
+                            <span class="unit-tag" id="dynamicUnitTag1">Unit</span>
+                        </div>
+                    </div>
+                    <div class="input-block">
+                        <label>🎯 Daily Target Stock</label>
+                        <div class="input-group white-bg has-tag">
+                            <input type="number" step="0.01" min="0" name="target_stock" required>
+                            <span class="unit-tag" id="dynamicUnitTag2">Unit</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="btn-save notranslate" data-key="save">Save</button>
+                <button type="button" class="btn-cancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/add_ingredient.js') }}"></script>
+<script>
+// Apply currency conversion to all price displays
+document.addEventListener('DOMContentLoaded', () => {
+    const sym  = window.currencySymbol || 'RM';
+    const rate = parseFloat(window.currencyRate || '1') || 1;
+    document.querySelectorAll('.price-display[data-base]').forEach(el => {
+        const base = parseFloat(el.dataset.base || 0);
+        el.textContent = sym + ' ' + (base * rate).toFixed(2);
+    });
+    // Update currency tag in modal
+    const tag = document.getElementById('currencyTag');
+    if (tag) tag.textContent = sym;
+});
+</script>
+{% endblock %}

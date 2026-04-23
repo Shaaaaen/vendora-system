@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="{{ url_for('static', filename='assets/icons/logo.png') }}" type="image/png">
+  <title>Reset Password – Vendora</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    .reset-body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .reset-body::after {
+      content: "";
+      position: absolute;
+      inset: -40px;
+      background: url("{{ url_for('static', filename='assets/icons/login_bg.png') }}") no-repeat center center/cover;
+      background-size: 140% auto;
+      z-index: 0;
+      transform: translate3d(var(--px, 0), var(--py, 0), 0);
+      transition: transform 0.12s cubic-bezier(.2,.8,.2,1);
+      will-change: transform;
+    }
+    .reset-body::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(191, 166, 103, 0.7);
+      z-index: 1;
+    }
+    .lang-switch {
+      position: absolute; top: 20px; right: 20px;
+      background: white; padding: 6px 12px; border-radius: 20px;
+      font-size: 14px; z-index: 3;
+    }
+    .lang-switch select { border: none; outline: none; background: transparent; cursor: pointer; }
+    .reset-card {
+      width: 420px; padding: 30px; border-radius: 20px;
+      background: rgba(255, 255, 255, 0.92); color: #4a2c00;
+      position: relative; z-index: 2; box-shadow: 0 25px 60px rgba(0,0,0,0.25);
+    }
+    .back-btn {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 20px; font-weight: 700; color: #4a2c00;
+      cursor: pointer; margin-bottom: 24px; text-decoration: none;
+    }
+    .back-btn svg { width: 22px; height: 22px; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .dots { display: flex; justify-content: center; gap: 8px; margin-top: 24px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #d4c0a0; transition: background 0.3s; }
+    .dot.active { background: #4a2c00; }
+    .reset-label { display: block; font-weight: 600; margin-top: 14px; margin-bottom: 4px; font-size: 14px; }
+    .reset-input {
+      width: 100%; padding: 12px 15px; border-radius: 25px;
+      border: 1.5px solid #e0c99a; outline: none; font-size: 14px;
+      background: #fff; color: #4a2c00; transition: border-color 0.2s;
+    }
+    .reset-input:focus { border-color: #4a2c00; }
+    .reset-input.input-pw { padding-right: 44px; }
+    .input-wrap { position: relative; }
+    .toggle-pw {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: #999; font-size: 16px;
+    }
+    .security-key-box { text-align: center; margin: 20px 0; }
+    .security-key-value {
+      display: inline-block; padding: 10px 24px;
+      border: 1.5px solid #e0c99a; border-radius: 12px;
+      font-size: 18px; font-weight: 600; letter-spacing: 2px;
+      color: #4a2c00; background: #fffbf2;
+    }
+    .btn-primary {
+      width: 100%; margin-top: 22px; padding: 12px; border-radius: 30px;
+      border: none; background: #4a2c00; color: white;
+      font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 10px; margin-top: 22px; }
+    .btn-yes {
+      flex: 1; padding: 12px; border-radius: 30px; border: none;
+      background: #2ecc71; color: white; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .btn-no {
+      flex: 1; padding: 12px; border-radius: 30px; border: none;
+      background: #e74c3c; color: white; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .step-title { text-align: center; font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+    .step-subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 10px; }
+    .reset-error { display: none; color: #c0392b; font-size: 13px; text-align: center; margin-top: 10px; }
+    .success-icon { text-align: center; margin: 16px 0 8px; font-size: 56px; }
+    .question-box {
+      background: #fffbf2; border: 1.5px solid #e0c99a; border-radius: 12px;
+      padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 600; color: #4a2c00;
+    }
+  </style>
+</head>
+<body class="reset-body">
+
+  <div class="lang-switch">
+    🌐
+    <select id="languageSwitcher" onchange="changeLanguage(this.value)">
+      <option value="en">English</option>
+      <option value="zh">中文</option>
+      <option value="ms">Bahasa Melayu</option>
+      <option value="id">Indonesia</option>
+    </select>
+  </div>
+
+  <div class="reset-card">
+
+    <a id="backBtn" class="back-btn" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M19 12H5M12 5l-7 7 7 7"/>
+      </svg>
+      <span id="titleText">Reset Password</span>
+    </a>
+
+    <!-- STEP 1: Email -->
+    <div class="step active" id="step1">
+      <p class="step-title" id="s1title">Please Enter Your Email.</p>
+      <p class="step-subtitle" id="s1sub">Make sure this is the email you registered before.</p>
+      <input class="reset-input" type="email" id="emailInput" placeholder="Type here...">
+      <div class="reset-error" id="s1error"></div>
+      <button class="btn-primary" id="s1btn" onclick="submitEmail()">Continue</button>
+      <div class="dots">
+        <div class="dot active"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Security Key -->
+    <div class="step" id="step2">
+      <p class="step-title" id="s2title">Is This Your Security Key?</p>
+      <p class="step-subtitle" id="s2sub">Please check if this is your security key.</p>
+      <div class="security-key-box">
+        <span class="security-key-value" id="securityKeyDisplay"></span>
+      </div>
+      <div class="reset-error" id="s2error"></div>
+      <div class="btn-row">
+        <button class="btn-yes" id="s2yes" onclick="confirmKey(true)">Yes, this is my security key</button>
+        <button class="btn-no" id="s2no" onclick="confirmKey(false)">No, this is not my security key</button>
+      </div>
+      <div class="dots">
+        <div class="dot"></div><div class="dot active"></div><div class="dot"></div>
+        <div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Security Question -->
+    <div class="step" id="step3">
+      <p class="step-title" id="s3title">Security Question</p>
+      <p class="step-subtitle" id="s3sub">Please provide the answer to your security question for verification.</p>
+      <div class="question-box" id="questionDisplay"></div>
+      <label class="reset-label" id="s3answerLabel">Your Answer</label>
+      <input class="reset-input" type="text" id="answerInput" placeholder="Enter your answer here...">
+      <div class="reset-error" id="s3error"></div>
+      <button class="btn-primary" id="s3btn" onclick="submitAnswer()">Next</button>
+      <div class="dots">
+        <div class="dot"></div><div class="dot"></div><div class="dot active"></div>
+        <div class="dot"></div><div class="dot"></div>
+      </div>
+    </div>
+
+    <!-- STEP 4: New Password -->
+    <div class="step" id="step4">
+      <p class="step-title" id="s4title">Set a new password</p>
+      <p class="step-subtitle" id="s4sub">Create a new password. Ensure it differs from previous ones for security.</p>
+      <label class="reset-label" id="s4newLabel">🔒 New Password</label>
+      <div class="input-wrap">
+        <input class="reset-input input-pw" type="password" id="newPwInput" placeholder="Enter your new password here...">
+        <button class="toggle-pw" onclick="togglePw('newPwInput', this)">👁</button>
+      </div>
+      <label class="reset-label" id="s4confirmLabel">🔒 Confirm Password</label>
+      <div class="input-wrap">
+        <input class="reset-input input-pw" type="password" id="confirmPwInput" placeholder="Re-enter your new password here...">
+        <button class="toggle-pw" onclick="togglePw('confirmPwInput', this)">👁</button>
+      </div>
+      <div class="reset-error" id="s4error"></div>
+      <button class="btn-primary" id="s4btn" onclick="submitNewPassword()">Update Password</button>
+      <div class="dots">
+        <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        <div class="dot active"></div><div class="dot"></div>
+      </div>
+    </div>
+
+    <!-- STEP 5: Success -->
+    <div class="step" id="step5">
+      <div class="success-icon">✅</div>
+      <p class="step-title" id="s5title">Successful</p>
+      <p class="step-subtitle" id="s5sub">Congratulations! Your password has been changed.<br>Please click continue to proceed to the login page.</p>
+      <button class="btn-primary" id="s5btn" onclick="window.location.href='/login'">Continue</button>
+    </div>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='js/bg.js') }}"></script>
+  <script>
+    let currentStep = 1;
+
+    const T = {
+      en: {
+        title:"Reset Password",
+        s1title:"Please Enter Your Email.", s1sub:"Make sure this is the email you registered before.",
+        s1btn:"Continue", emailPh:"Type here...",
+        s2title:"Is This Your Security Key?", s2sub:"Please check if this is your security key.",
+        s2yes:"Yes, this is my security key", s2no:"No, this is not my security key",
+        s3title:"Security Question", s3sub:"Please provide the answer to your security question for verification.",
+        s3answerLabel:"Your Answer", answerPh:"Enter your answer here...", s3btn:"Next",
+        s4title:"Set a new password", s4sub:"Create a new password. Ensure it differs from previous ones for security.",
+        s4newLabel:"🔒 New Password", newPwPh:"Enter your new password here...",
+        s4confirmLabel:"🔒 Confirm Password", confirmPwPh:"Re-enter your new password here...",
+        s4btn:"Update Password",
+        s5title:"Successful", s5sub:"Congratulations! Your password has been changed.<br>Please click continue to proceed to the login page.",
+        s5btn:"Continue",
+        errEmailEmpty:"Please enter your email.", errEmailNotFound:"No account found for this email.",
+        errKeyNo:"Security key not recognised. Please try again from the beginning.",
+        errAnswerEmpty:"Please enter your answer.", errAnswerWrong:"Incorrect answer. Please try again.",
+        errPwEmpty:"Please enter a new password.", errPwShort:"Password must be at least 6 characters.",
+        errPwMatch:"Passwords do not match.", errGeneric:"Something went wrong. Please try again."
+      },
+      zh: {
+        title:"重置密码",
+        s1title:"请输入您的邮箱。", s1sub:"请确保这是您注册时使用的邮箱。",
+        s1btn:"继续", emailPh:"在此输入...",
+        s2title:"这是您的安全密钥吗？", s2sub:"请确认这是否是您的安全密钥。",
+        s2yes:"是，这是我的密钥", s2no:"否，这不是我的密钥",
+        s3title:"安全问题", s3sub:"请回答您的安全问题以完成验证。",
+        s3answerLabel:"您的答案", answerPh:"在此输入答案...", s3btn:"下一步",
+        s4title:"设置新密码", s4sub:"请创建与之前不同的新密码。",
+        s4newLabel:"🔒 新密码", newPwPh:"请输入新密码...",
+        s4confirmLabel:"🔒 确认密码", confirmPwPh:"请再次输入新密码...",
+        s4btn:"更新密码",
+        s5title:"成功", s5sub:"恭喜！您的密码已更改。<br>请点击继续前往登录页面。",
+        s5btn:"继续",
+        errEmailEmpty:"请输入邮箱。", errEmailNotFound:"未找到该邮箱的账号。",
+        errKeyNo:"安全密钥不匹配，请重新开始。",
+        errAnswerEmpty:"请输入答案。", errAnswerWrong:"答案错误，请重试。",
+        errPwEmpty:"请输入新密码。", errPwShort:"密码至少6个字符。",
+        errPwMatch:"两次密码不一致。", errGeneric:"出现错误，请重试。"
+      },
+      ms: {
+        title:"Tetapkan Semula Kata Laluan",
+        s1title:"Sila Masukkan E-mel Anda.", s1sub:"Pastikan ini adalah e-mel yang anda daftarkan sebelum ini.",
+        s1btn:"Teruskan", emailPh:"Taip di sini...",
+        s2title:"Adakah Ini Kunci Keselamatan Anda?", s2sub:"Sila semak sama ada ini adalah kunci keselamatan anda.",
+        s2yes:"Ya, ini kunci saya", s2no:"Tidak, ini bukan kunci saya",
+        s3title:"Soalan Keselamatan", s3sub:"Sila jawab soalan keselamatan anda.",
+        s3answerLabel:"Jawapan Anda", answerPh:"Masukkan jawapan...", s3btn:"Seterusnya",
+        s4title:"Kata Laluan Baharu", s4sub:"Cipta kata laluan baharu yang berbeza.",
+        s4newLabel:"🔒 Kata Laluan Baharu", newPwPh:"Masukkan kata laluan baharu...",
+        s4confirmLabel:"🔒 Sahkan Kata Laluan", confirmPwPh:"Masukkan semula kata laluan baharu...",
+        s4btn:"Kemas Kini",
+        s5title:"Berjaya", s5sub:"Tahniah! Kata laluan anda telah ditukar.<br>Sila klik teruskan untuk ke halaman log masuk.",
+        s5btn:"Teruskan",
+        errEmailEmpty:"Sila masukkan e-mel.", errEmailNotFound:"Tiada akaun untuk e-mel ini.",
+        errKeyNo:"Kunci tidak sepadan. Sila mulakan semula.",
+        errAnswerEmpty:"Sila masukkan jawapan.", errAnswerWrong:"Jawapan salah. Cuba lagi.",
+        errPwEmpty:"Sila masukkan kata laluan baharu.", errPwShort:"Kata laluan sekurang-kurangnya 6 aksara.",
+        errPwMatch:"Kata laluan tidak sepadan.", errGeneric:"Ralat berlaku. Cuba lagi."
+      },
+      id: {
+        title:"Reset Kata Sandi",
+        s1title:"Masukkan Email Anda.", s1sub:"Pastikan ini email yang Anda daftarkan sebelumnya.",
+        s1btn:"Lanjutkan", emailPh:"Ketik di sini...",
+        s2title:"Apakah Ini Kunci Keamanan Anda?", s2sub:"Periksa apakah ini kunci keamanan Anda.",
+        s2yes:"Ya, ini kunci saya", s2no:"Tidak, ini bukan kunci saya",
+        s3title:"Pertanyaan Keamanan", s3sub:"Berikan jawaban pertanyaan keamanan Anda.",
+        s3answerLabel:"Jawaban Anda", answerPh:"Masukkan jawaban...", s3btn:"Berikutnya",
+        s4title:"Buat Kata Sandi Baru", s4sub:"Buat kata sandi baru yang berbeda dari sebelumnya.",
+        s4newLabel:"🔒 Kata Sandi Baru", newPwPh:"Masukkan kata sandi baru...",
+        s4confirmLabel:"🔒 Konfirmasi Kata Sandi", confirmPwPh:"Masukkan ulang kata sandi baru...",
+        s4btn:"Perbarui Kata Sandi",
+        s5title:"Berhasil", s5sub:"Selamat! Kata sandi Anda telah diubah.<br>Klik lanjutkan untuk ke halaman login.",
+        s5btn:"Lanjutkan",
+        errEmailEmpty:"Masukkan email Anda.", errEmailNotFound:"Akun tidak ditemukan.",
+        errKeyNo:"Kunci tidak cocok. Mulai dari awal.",
+        errAnswerEmpty:"Masukkan jawaban Anda.", errAnswerWrong:"Jawaban salah. Coba lagi.",
+        errPwEmpty:"Masukkan kata sandi baru.", errPwShort:"Kata sandi minimal 6 karakter.",
+        errPwMatch:"Kata sandi tidak cocok.", errGeneric:"Terjadi kesalahan. Coba lagi."
+      }
+    };
+
+    let lang = "en";
+    function changeLanguage(l) { lang = l; applyLang(); }
+    function t(k) { return (T[lang]||T.en)[k]||""; }
+
+    function applyLang() {
+      const ids = ["titleText","s1title","s1sub","s1btn","s2title","s2sub","s2yes","s2no",
+                   "s3title","s3sub","s3answerLabel","s3btn","s4title","s4sub",
+                   "s4newLabel","s4confirmLabel","s4btn","s5title","s5btn"];
+      const keys = ["title","s1title","s1sub","s1btn","s2title","s2sub","s2yes","s2no",
+                    "s3title","s3sub","s3answerLabel","s3btn","s4title","s4sub",
+                    "s4newLabel","s4confirmLabel","s4btn","s5title","s5btn"];
+      ids.forEach((id,i) => { const el=document.getElementById(id); if(el) el.textContent=t(keys[i]); });
+      document.getElementById("emailInput").placeholder = t("emailPh");
+      document.getElementById("answerInput").placeholder = t("answerPh");
+      document.getElementById("newPwInput").placeholder = t("newPwPh");
+      document.getElementById("confirmPwInput").placeholder = t("confirmPwPh");
+      document.getElementById("s5sub").innerHTML = t("s5sub");
+    }
+
+    function showStep(n) {
+      document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+      document.getElementById("step"+n).classList.add("active");
+      currentStep = n;
+      document.getElementById("backBtn").style.display = n===5 ? "none" : "flex";
+    }
+
+    function goBack() {
+      if (currentStep <= 1) window.location.href = "/login";
+      else showStep(currentStep - 1);
+    }
+
+    function showError(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = msg; el.style.display = "block";
+    }
+    function clearError(id) { document.getElementById(id).style.display = "none"; }
+
+    // Step 1
+    function submitEmail() {
+      clearError("s1error");
+      const email = document.getElementById("emailInput").value.trim();
+      if (!email) { showError("s1error", t("errEmailEmpty")); return; }
+      const btn = document.getElementById("s1btn"); btn.disabled = true;
+      fetch("/api/reset/verify_email", {
+        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
+        body: JSON.stringify({email})
+      }).then(r=>r.json()).then(d => {
+        btn.disabled = false;
+        if (d.status==="success") { document.getElementById("securityKeyDisplay").textContent=d.security_key; showStep(2); }
+        else showError("s1error", t("errEmailNotFound"));
+      }).catch(()=>{ btn.disabled=false; showError("s1error",t("errGeneric")); });
+    }
+
+    // Step 2
+    function confirmKey(yes) {
+      clearError("s2error");
+      fetch("/api/reset/verify_security_key", {
+        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
+        body: JSON.stringify({confirmed: yes})
+      }).then(r=>r.json()).then(d => {
+        if (d.status==="success") {
+          fetch("/api/reset/get_security_question", {credentials:"include"})
+          .then(r=>r.json()).then(q => {
+            document.getElementById("questionDisplay").textContent = q.security_question||"";
+            showStep(3);
+          });
+        } else {
+          showError("s2error", t("errKeyNo"));
+          setTimeout(()=>window.location.href="/reset_password", 2500);
+        }
+      }).catch(()=>showError("s2error",t("errGeneric")));
+    }
+
+    // Step 3
+    function submitAnswer() {
+      clearError("s3error");
+      const answer = document.getElementById("answerInput").value.trim();
+      if (!answer) { showError("s3error", t("errAnswerEmpty")); return; }
+      const btn = document.getElementById("s3btn"); btn.disabled = true;
+      fetch("/api/reset/verify_security_answer", {
+        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
+        body: JSON.stringify({answer})
+      }).then(r=>r.json()).then(d => {
+        btn.disabled = false;
+        if (d.status==="success") showStep(4);
+        else showError("s3error", t("errAnswerWrong"));
+      }).catch(()=>{ btn.disabled=false; showError("s3error",t("errGeneric")); });
+    }
+
+    // Step 4
+    function submitNewPassword() {
+      clearError("s4error");
+      const pw = document.getElementById("newPwInput").value;
+      const confirm = document.getElementById("confirmPwInput").value;
+      if (!pw) { showError("s4error", t("errPwEmpty")); return; }
+      if (pw.length < 6) { showError("s4error", t("errPwShort")); return; }
+      if (pw !== confirm) { showError("s4error", t("errPwMatch")); return; }
+      const btn = document.getElementById("s4btn"); btn.disabled = true;
+      fetch("/api/reset/update_password", {
+        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
+        body: JSON.stringify({password: pw})
+      }).then(r=>r.json()).then(d => {
+        btn.disabled = false;
+        if (d.status==="success") showStep(5);
+        else showError("s4error", t("errGeneric"));
+      }).catch(()=>{ btn.disabled=false; showError("s4error",t("errGeneric")); });
+    }
+
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      inp.type = inp.type==="password" ? "text" : "password";
+      btn.textContent = inp.type==="password" ? "👁" : "🙈";
+    }
+
+    document.getElementById("emailInput").addEventListener("keydown", e=>{ if(e.key==="Enter") submitEmail(); });
+    document.getElementById("answerInput").addEventListener("keydown", e=>{ if(e.key==="Enter") submitAnswer(); });
+    document.getElementById("confirmPwInput").addEventListener("keydown", e=>{ if(e.key==="Enter") submitNewPassword(); });
+  </script>
+</body>
+</html>

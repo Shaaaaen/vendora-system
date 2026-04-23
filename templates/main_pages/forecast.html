@@ -1,0 +1,501 @@
+{% extends 'base.html' %}
+{% block title %}Forecast{% endblock %}
+
+{% block content %}
+<div class="main-content">
+<div class="forecast-content">
+
+    <!-- ── RANGE SELECTOR ─────────────────────────── -->
+    <div class="forecast-range-card">
+        <div class="forecast-range-title">Forecast Range</div>
+        <div class="forecast-range-sub">Select your preferred forecast range.</div>
+        <div class="forecast-date-label" id="todayLabel">Today: — &nbsp;<span id="cacheInfo" style="display:none;font-size:11px;font-weight:600;border-radius:8px;padding:2px 8px;background:#f0faf5;"></span></div>
+        <div class="forecast-range-btns">
+            <button class="forecast-range-btn" data-days="3" onclick="setRange(3)">
+                <span class="frbtn-dot"></span> Next 3 days
+            </button>
+            <button class="forecast-range-btn active" data-days="7" onclick="setRange(7)">
+                <span class="frbtn-dot"></span> Next 7 days
+            </button>
+            <button class="forecast-range-btn" data-days="12" onclick="setRange(12)">
+                <span class="frbtn-dot"></span> Next 12 days
+            </button>
+        </div>
+    </div>
+
+    <!-- ── CSV IMPORT CARD ────────────────────────── -->
+    <div class="forecast-import-card">
+        <div class="forecast-import-title">📂 Quick Import Historical Sales</div>
+        <div class="forecast-import-sub">Upload any CSV containing a <code>date</code> column and a <code>revenue</code> (or <code>total_amount</code> / <code>sales</code>) column. Extra columns are ignored. Duplicate dates are merged automatically.</div>
+        <div class="forecast-import-row">
+            <input type="file" id="csvFileInput" accept=".csv" class="forecast-import-input">
+            <button id="importBtn" class="forecast-import-btn" onclick="importCSV()">Import</button>
+        </div>
+        <div id="importResult" style="margin-top:8px;font-size:12px;font-weight:600;"></div>
+        <div class="forecast-import-hint">
+            CSV format example (extra columns OK):<br>
+            <code>date,revenue<br>2024-01-01,450.00<br>2024-01-02,320.50</code><br>
+            Also works with: <code>total_amount</code>, <code>sales</code>, <code>total_sales</code>
+        </div>
+    </div>
+
+    <!-- ── MAIN CHART + INFO PANEL ────────────────── -->
+    <div class="forecast-two-col">
+
+        <!-- Chart card -->
+        <div class="forecast-chart-card">
+            <div class="forecast-chart-title">AI Forecast (Sales Trend)</div>
+            <div class="forecast-model-badges" id="modelBadges">
+                <span class="fc-badge fc-badge-prophet">Prophet</span>
+                <span class="fc-badge fc-badge-hybrid">Hybrid</span>
+                <span class="fc-badge fc-badge-lstm">LSTM</span>
+            </div>
+            <div id="chartArea">
+                <div class="forecast-loading">
+                    <div class="forecast-loading-spinner"></div>
+                    <div class="forecast-loading-text">Running AI models…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info panel -->
+        <div class="forecast-info-panel">
+            <div class="forecast-info-title">Forecast Information</div>
+            <div class="forecast-info-text">
+                You can choose to predict sales for the next <strong>3, 7, or 12 days</strong>.
+            </div>
+            <div class="forecast-info-text">
+                Do take note that the prediction shows <strong>total sales revenue</strong>, not net profit.
+            </div>
+            <div class="forecast-info-text" id="modelSelectionInfo" style="display:none;">
+                <!-- filled by JS -->
+            </div>
+
+            <!-- Model Accuracy Cards -->
+            <div id="accuracySection" style="display:none;">
+                <div style="font-size:13px;font-weight:700;color:#3E1A03;margin-bottom:10px;">Model Comparison</div>
+                <div class="forecast-accuracy-row">
+                    <div class="forecast-accuracy-card forecast-acc-prophet">
+                        <div class="forecast-acc-label">Prophet</div>
+                        <div class="forecast-acc-wmape" id="prophetWmape">—</div>
+                        <div class="forecast-acc-desc">WMAPE (open days)</div>
+                        <div class="forecast-acc-desc" id="prophetMae">MAE: —</div>
+                        <div class="forecast-acc-desc" id="prophetAccuracy">Accuracy: —</div>
+                        <div id="prophetWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                    </div>
+                    <div class="forecast-accuracy-card forecast-acc-hybrid" id="hybridCard">
+                        <div class="forecast-acc-label">Hybrid</div>
+                        <div class="forecast-acc-wmape" id="hybridWmape">—</div>
+                        <div class="forecast-acc-desc">WMAPE (open days)</div>
+                        <div class="forecast-acc-desc" id="hybridMae">MAE: —</div>
+                        <div class="forecast-acc-desc" id="hybridAccuracy">Accuracy: —</div>
+                        <div id="hybridWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                    </div>
+                    <div class="forecast-accuracy-card forecast-acc-lstm" id="lstmCard">
+                        <div class="forecast-acc-label" id="lstmLabel">LSTM</div>
+                        <div class="forecast-acc-wmape" id="lstmWmape">—</div>
+                        <div class="forecast-acc-desc">WMAPE (open days)</div>
+                        <div class="forecast-acc-desc" id="lstmMae">MAE: —</div>
+                        <div class="forecast-acc-desc" id="lstmAccuracy">Accuracy: —</div>
+                        <div id="lstmWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── PREDICTED VALUES TABLE ─────────────────── -->
+    <div class="forecast-table-card" id="tableCard" style="display:none;">
+        <div class="forecast-table-title" id="tableTitle">Predicted Daily Sales</div>
+        <table class="forecast-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Predicted Revenue</th>
+                    <th>Model Used</th>
+                </tr>
+            </thead>
+            <tbody id="forecastTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- ── LOW STOCK RESTOCK RECOMMENDATION ──────── -->
+    <div class="forecast-restock-card" id="restockCard" style="display:none;">
+        <div class="forecast-restock-title">
+            🛒 Restock Recommendation
+            <span style="font-size:12px;font-weight:500;color:#a07040;">(based on forecast period)</span>
+        </div>
+        <div id="restockList"></div>
+    </div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ═══════════════════════════════════════════
+// FORECAST PAGE — forecast.js inline
+// ═══════════════════════════════════════════
+
+const sym  = window.currencySymbol || 'RM';
+const rate = parseFloat(window.currencyRate || '1') || 1;
+const fmtF = (v) => sym + ' ' + (parseFloat(v) * rate).toFixed(2);
+
+let currentDays = 7;
+let forecastChart = null;
+
+const DAYS_OF_WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function formatDateLabel(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return `${DAYS_OF_WEEK[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
+}
+
+function setRange(days) {
+    currentDays = days;
+    document.querySelectorAll('.forecast-range-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.days) === days);
+    });
+    loadForecast();
+}
+
+let _pollTimer = null;   // active polling timer handle
+
+async function loadForecast(isPolling = false) {
+    // Only show the spinner on the very first call, not on poll retries
+    if (!isPolling) {
+        document.getElementById('chartArea').innerHTML = `
+            <div class="forecast-loading">
+                <div class="forecast-loading-spinner"></div>
+                <div class="forecast-loading-text" id="loadingMsg">Loading forecast…</div>
+            </div>`;
+        document.getElementById('tableCard').style.display = 'none';
+        document.getElementById('restockCard').style.display = 'none';
+        document.getElementById('accuracySection').style.display = 'none';
+        document.getElementById('modelSelectionInfo').style.display = 'none';
+    }
+
+    try {
+        const res  = await fetch(`/api/forecast?days=${currentDays}`);
+        const data = await res.json();
+
+        // ── Still computing in background — poll every 5s ────
+        if (data.status === 'computing') {
+            const el = document.getElementById('loadingMsg');
+            if (el) el.textContent = '⏳ AI models are running in the background… page stays usable!';
+            if (_pollTimer) clearTimeout(_pollTimer);
+            _pollTimer = setTimeout(() => loadForecast(true), 5000);
+            return;
+        }
+
+        // ── Stop any pending poll ────────────────────────────
+        if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
+
+        if (data.status === 'no_data') {
+            document.getElementById('chartArea').innerHTML = `
+                <div class="forecast-no-data">
+                    <div class="forecast-no-data-icon">🔮</div>
+                    <div class="forecast-no-data-title">Not Enough Data</div>
+                    <div class="forecast-no-data-sub">${data.message}<br>You have ${data.rows} day(s) of data. Use the Import CSV button below to add historical sales quickly!</div>
+                </div>`;
+            return;
+        }
+
+        if (data.status !== 'ok') {
+            document.getElementById('chartArea').innerHTML = `
+                <div class="forecast-no-data">
+                    <div class="forecast-no-data-icon">⚠️</div>
+                    <div class="forecast-no-data-title">Forecast Error</div>
+                    <div class="forecast-no-data-sub">${data.message || 'An error occurred. Please try again.'}</div>
+                </div>`;
+            return;
+        }
+
+        // Show cache indicator
+        const cacheEl = document.getElementById('cacheInfo');
+        if (cacheEl) {
+            if (data.from_cache) {
+                cacheEl.textContent = `⚡ Instant (cached ${data.cache_age_mins}m ago)`;
+                cacheEl.style.color = '#2ecc71';
+            } else {
+                cacheEl.textContent = `🔄 Freshly computed`;
+                cacheEl.style.color = '#e67e22';
+            }
+            cacheEl.style.display = 'inline';
+        }
+
+        renderChart(data);
+        renderAccuracy(data);
+        renderTable(data);
+        renderRestockWarnings(data);
+
+    } catch (err) {
+        if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
+        document.getElementById('chartArea').innerHTML = `
+            <div class="forecast-no-data">
+                <div class="forecast-no-data-icon">⚠️</div>
+                <div class="forecast-no-data-title">Connection Error</div>
+                <div class="forecast-no-data-sub">Could not connect to the forecast service.</div>
+            </div>`;
+    }
+}
+
+async function importCSV() {
+    const input = document.getElementById('csvFileInput');
+    if (!input.files.length) {
+        alert('Please select a CSV file first.');
+        return;
+    }
+    const file = input.files[0];
+    const btn  = document.getElementById('importBtn');
+    btn.disabled = true;
+    btn.textContent = 'Importing…';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res  = await fetch('/api/import_sales_csv', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            document.getElementById('importResult').innerHTML =
+                `✅ Imported <strong>${data.imported}</strong> rows · Skipped <strong>${data.skipped}</strong> duplicates · ${data.errors} errors.<br>
+                 <small>Forecast is updating in the background — chart will refresh automatically.</small>`;
+            document.getElementById('importResult').style.color = '#27ae60';
+            input.value = '';
+            // Start polling immediately — chart will update as soon as background finishes
+            setTimeout(() => loadForecast(), 3000);
+        } else {
+            document.getElementById('importResult').textContent = '❌ ' + (data.message || 'Import failed.');
+            document.getElementById('importResult').style.color = '#e74c3c';
+        }
+    } catch (e) {
+        document.getElementById('importResult').textContent = '❌ Network error during import.';
+        document.getElementById('importResult').style.color = '#e74c3c';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Import';
+}
+
+function renderChart(data) {
+    const winner   = data.winner;
+    const bestPred = data.best_predictions || [];
+    const recent   = data.recent_actuals   || [];
+    const propPred = data.prophet.predictions || [];
+    const hybPred  = data.hybrid.predictions  || [];
+    const lstmPred = data.lstm_skipped ? [] : (data.lstm.predictions || []);
+
+    // Build combined x-axis: recent actuals + predictions
+    const allDates   = [...recent.map(r => r.date), ...bestPred.map(p => p.date)];
+    const uniqueDates = [...new Set(allDates)];
+
+    const actualMap = {}; recent.forEach(r  => { actualMap[r.date] = r.actual; });
+    const propMap   = {}; propPred.forEach(p => { propMap[p.date]  = p.predicted; });
+    const hybMap    = {}; hybPred.forEach(p  => { hybMap[p.date]   = p.predicted; });
+    const lstmMap   = {}; lstmPred.forEach(p => { lstmMap[p.date]  = p.predicted; });
+
+    const labels     = uniqueDates.map(formatDateLabel);
+    const actualVals = uniqueDates.map(d => actualMap[d] !== undefined ? actualMap[d] * rate : null);
+    const propVals   = uniqueDates.map(d => propMap[d]  !== undefined ? propMap[d]  * rate : null);
+    const hybVals    = uniqueDates.map(d => hybMap[d]   !== undefined ? hybMap[d]   * rate : null);
+    const lstmVals   = data.lstm_skipped ? null
+                     : uniqueDates.map(d => lstmMap[d] !== undefined  ? lstmMap[d]  * rate : null);
+
+    if (forecastChart) { forecastChart.destroy(); forecastChart = null; }
+    document.getElementById('chartArea').innerHTML = '<canvas id="forecastCanvas" style="max-height:340px;"></canvas>';
+    const ctx = document.getElementById('forecastCanvas').getContext('2d');
+
+    const datasets = [
+        {
+            label: 'Actual Sales',
+            data: actualVals,
+            borderColor: '#5a2d0c', backgroundColor: 'rgba(90,45,12,0.08)',
+            borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#5a2d0c',
+            tension: 0.3, fill: false, spanGaps: false
+        },
+        {
+            label: 'Prophet',
+            data: propVals,
+            borderColor: '#6C7FD8', backgroundColor: 'rgba(108,127,216,0.08)',
+            borderWidth: winner === 'prophet' ? 3 : 1.5,
+            borderDash: winner === 'prophet' ? [] : [5,3],
+            pointRadius: 4, pointBackgroundColor: '#6C7FD8',
+            tension: 0.3, fill: false, spanGaps: false
+        },
+        {
+            label: 'Hybrid (Prophet + Rules)',
+            data: hybVals,
+            borderColor: '#F4A72B', backgroundColor: 'rgba(244,167,43,0.08)',
+            borderWidth: winner === 'hybrid' ? 3 : 1.5,
+            borderDash: winner === 'hybrid' ? [] : [5,3],
+            pointRadius: 4, pointBackgroundColor: '#F4A72B',
+            tension: 0.3, fill: false, spanGaps: false
+        }
+    ];
+
+    if (!data.lstm_skipped && lstmVals) {
+        datasets.push({
+            label: 'LSTM',
+            data: lstmVals,
+            borderColor: '#4BC8A0', backgroundColor: 'rgba(75,200,160,0.08)',
+            borderWidth: winner === 'lstm' ? 3 : 1.5,
+            borderDash: winner === 'lstm' ? [] : [5,3],
+            pointRadius: 4, pointBackgroundColor: '#4BC8A0',
+            tension: 0.3, fill: false, spanGaps: false
+        });
+    }
+
+    forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { size: 12 } } },
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const v = ctx.parsed.y;
+                            return v === null ? '' : ` ${ctx.dataset.label}: ${sym} ${v.toFixed(2)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: '#F5ECD7' }, ticks: { maxRotation: 45, font: { size: 11 } } },
+                y: {
+                    grid: { color: '#F5ECD7' },
+                    ticks: { font: { size: 11 }, callback: (v) => sym + ' ' + v.toFixed(0) }
+                }
+            }
+        }
+    });
+
+    // Update badges
+    const badgesEl = document.getElementById('modelBadges');
+    let badgeHtml = `<span class="fc-badge fc-badge-prophet">Prophet</span>`;
+    badgeHtml    += `<span class="fc-badge fc-badge-hybrid">Hybrid</span>`;
+    if (!data.lstm_skipped) {
+        badgeHtml += `<span class="fc-badge fc-badge-lstm">LSTM</span>`;
+    } else {
+        badgeHtml += `<span class="fc-badge" style="background:#f5f5f5;color:#888;border:1.5px solid #ddd;">LSTM (60+ days needed)</span>`;
+    }
+    badgeHtml += `<span class="fc-badge fc-badge-active">✓ Using: ${winner.toUpperCase()}</span>`;
+    badgesEl.innerHTML = badgeHtml;
+}
+
+function renderAccuracy(data) {
+    const pM  = data.prophet.metrics || {};
+    const hM  = data.hybrid.metrics  || {};
+    const lM  = data.lstm_skipped ? null : (data.lstm.metrics || {});
+
+    const fmtWmape = (v) => v !== undefined && !isNaN(v) ? (v * 100).toFixed(1) + '%' : '—';
+    const fmtMae   = (v) => v !== undefined && !isNaN(v) ? 'MAE: RM ' + v.toFixed(2) : 'MAE: —';
+    const fmtAcc   = (v) => v !== undefined && !isNaN(v) ? v.toFixed(1) + '%' : '—';
+
+    // Prophet card
+    document.getElementById('prophetWmape').textContent    = fmtWmape(pM.wmape_open);
+    document.getElementById('prophetMae').textContent      = fmtMae(pM.mae);
+    document.getElementById('prophetAccuracy').textContent = 'Accuracy: ' + fmtAcc(pM.accuracy);
+    document.getElementById('prophetWinner').style.display = data.winner === 'prophet' ? 'inline-flex' : 'none';
+
+    // Hybrid card
+    document.getElementById('hybridWmape').textContent    = fmtWmape(hM.wmape_open);
+    document.getElementById('hybridMae').textContent      = fmtMae(hM.mae);
+    document.getElementById('hybridAccuracy').textContent = 'Accuracy: ' + fmtAcc(hM.accuracy);
+    document.getElementById('hybridWinner').style.display = data.winner === 'hybrid' ? 'inline-flex' : 'none';
+
+    // LSTM card
+    const lstmCard = document.getElementById('lstmCard');
+    if (data.lstm_skipped) {
+        document.getElementById('lstmLabel').textContent    = 'LSTM';
+        document.getElementById('lstmWmape').textContent    = 'N/A';
+        document.getElementById('lstmMae').textContent      = 'Need 60+ days of data';
+        document.getElementById('lstmAccuracy').textContent = '';
+        document.getElementById('lstmWinner').style.display = 'none';
+        lstmCard.style.opacity = '0.5';
+    } else {
+        document.getElementById('lstmLabel').textContent    = 'LSTM';
+        document.getElementById('lstmWmape').textContent    = fmtWmape(lM.wmape_open);
+        document.getElementById('lstmMae').textContent      = fmtMae(lM.mae);
+        document.getElementById('lstmAccuracy').textContent = 'Accuracy: ' + fmtAcc(lM.accuracy);
+        document.getElementById('lstmWinner').style.display = data.winner === 'lstm' ? 'inline-flex' : 'none';
+        lstmCard.style.opacity = '1';
+    }
+
+    document.getElementById('accuracySection').style.display = 'block';
+
+    // Selection info text
+    const infoEl = document.getElementById('modelSelectionInfo');
+    const winnerName = { prophet: 'Prophet', hybrid: 'Hybrid', lstm: 'LSTM' }[data.winner] || data.winner;
+    const pA = fmtAcc(pM.accuracy); const hA = fmtAcc(hM.accuracy);
+    if (!data.lstm_skipped) {
+        const lA = fmtAcc(lM.accuracy);
+        infoEl.innerHTML = `<strong>${winnerName}</strong> selected as best model (Prophet: ${pA} · Hybrid: ${hA} · LSTM: ${lA} — based on WMAPE on open trading days).`;
+    } else {
+        infoEl.innerHTML = `<strong>${winnerName}</strong> selected (Prophet: ${pA} · Hybrid: ${hA}). LSTM requires 60+ days of data (you have ${data.total_rows}).`;
+    }
+    infoEl.style.display = 'block';
+}
+
+function renderTable(data) {
+    const preds     = data.best_predictions || [];
+    const winner    = data.winner.toUpperCase();
+    const tbody     = document.getElementById('forecastTableBody');
+    const tableCard = document.getElementById('tableCard');
+
+    if (!preds.length) { tableCard.style.display = 'none'; return; }
+
+    document.getElementById('tableTitle').textContent =
+        `Predicted Daily Sales — Next ${data.days} Days`;
+
+    const winnerClass = data.winner === 'prophet' ? 'fc-badge-prophet'
+                      : data.winner === 'hybrid'  ? 'fc-badge-hybrid'
+                      : 'fc-badge-lstm';
+
+    tbody.innerHTML = preds.map(p => {
+        const d   = new Date(p.date + 'T00:00:00');
+        const dow = DAYS_OF_WEEK[d.getDay()];
+        return `<tr>
+            <td>${p.date}</td>
+            <td>${dow}</td>
+            <td><strong>${fmtF(p.predicted)}</strong></td>
+            <td><span class="fc-badge ${winnerClass}">${winner}</span></td>
+        </tr>`;
+    }).join('');
+
+    tableCard.style.display = 'block';
+}
+
+function renderRestockWarnings(data) {
+    const warnings  = data.low_stock_warnings || [];
+    const card      = document.getElementById('restockCard');
+    const list      = document.getElementById('restockList');
+
+    if (!warnings.length) { card.style.display = 'none'; return; }
+
+    list.innerHTML = warnings.map(w => `
+        <div class="restock-item-row">
+            <span class="restock-item-name">📦 ${w.ingredient_name}</span>
+            <div class="restock-item-info">
+                <span style="font-size:12px;color:#a07040;">Stock: ${w.current_stock} ${w.unit}</span>
+                <span class="restock-shortage-pill">Short: ${w.shortage} ${w.unit}</span>
+                <span class="restock-needed-pill">Need: ${w.projected_need} ${w.unit}</span>
+            </div>
+        </div>`).join('');
+
+    card.style.display = 'block';
+}
+
+// ── Init ─────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const now = new Date();
+    const label = now.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', weekday:'long' });
+    document.getElementById('todayLabel').textContent = `Today: ${label}`;
+    loadForecast();
+});
+</script>
+{% endblock %}

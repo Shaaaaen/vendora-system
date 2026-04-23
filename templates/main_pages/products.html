@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}My Business - Products{% endblock %}
+
+{% block content %}
+<div class="main-content">
+
+    <!-- TOP BAR -->
+    <div class="top-bar">
+        <div class="tabs">
+            <a class="tab" href="{{ url_for('ingredients') }}">
+                <span>🥬</span><span>Ingredients</span>
+            </a>
+            <a class="tab active" href="{{ url_for('products') }}">
+                <span>🧀</span><span>Products</span>
+            </a>
+            <a class="tab" href="{{ url_for('sales') }}">
+                <span>📊</span><span class="notranslate" data-key="record_sales">Record Sales</span>
+            </a>
+        </div>
+        <div class="top-bar-right">
+            <button class="add-btn" onclick="openAddModal()">+ Add Product</button>
+        </div>
+    </div>
+
+    <!-- CARD SECTION -->
+    <div class="card-section">
+        <h3 class="section-title">My Products</h3>
+        <div id="productList"></div>
+    </div>
+</div>
+
+<div class="custom-ingredient-modal" id="addProductModal">
+    <div class="modal-content product-modal-add">
+        <span class="close-btn" onclick="closeAddModal()">&times;</span>
+
+        <div class="modal-header">
+            <h2>🛒 Add Product</h2>
+        </div>
+
+        <form id="addProductForm">
+
+            <!-- Icon Picker -->
+            <div class="input-block" style="align-items:flex-start;">
+                <label>Choose an Icon</label>
+                <div class="icon-picker-grid" id="iconPickerGrid"></div>
+                <input type="hidden" name="product_icon" id="selectedIcon" value="🍽️">
+            </div>
+
+            <!-- Product Name -->
+            <div class="input-block" style="align-items:flex-start;">
+                <label>Product Name</label>
+                <div class="input-group white-bg" style="width:100%;">
+                    <input type="text" name="product_name" placeholder="e.g. Nasi Lemak" required>
+                </div>
+            </div>
+
+            <!-- Selling Price -->
+            <div class="input-block" style="align-items:flex-start;">
+                <label>Selling Price</label>
+                <div class="input-group white-bg" style="width:100%;">
+                    <span class="rm-tag">{{ user.symbol if user else 'RM' }}</span>
+                    <input type="number" name="selling_price" placeholder="0.00" min="0" step="0.01" required>
+                </div>
+            </div>
+
+            <!-- Ingredients -->
+            <div class="input-block" style="align-items:flex-start;">
+                <label>Recipe &amp; Ingredients</label>
+                <div id="addIngredientContainer" style="width:100%;display:flex;flex-direction:column;gap:10px;"></div>
+                <button type="button" id="addIngredientRowBtn" class="dashed-add-btn">+ Add Ingredient</button>
+            </div>
+
+            <!-- Actions -->
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeAddModal()">Cancel</button>
+                <button type="submit" class="btn-save notranslate" data-key="save_product">Save Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="custom-ingredient-modal" id="editProductModal">
+    <div class="modal-content product-modal-edit">
+        <div class="edit-modal-header">
+            <span id="editModalIcon" class="edit-modal-title-icon">🍽️</span>
+            <h3 id="editModalTitle">Edit Product</h3>
+            <button type="button" class="edit-close-btn" onclick="closeEditModal()">&times;</button>
+        </div>
+
+        <form id="editProductForm">
+            <input type="hidden" name="edit_product_icon" id="editSelectedIcon" value="🍽️">
+
+            <!-- Product Name -->
+            <div class="edit-field">
+                <label>Product Name</label>
+                <div class="input-group white-bg edit-input-group">
+                    <input type="text" name="product_name" placeholder="Product Name" required>
+                </div>
+            </div>
+
+            <!-- Selling Price -->
+            <div class="edit-field">
+                <label>Selling Price</label>
+                <div class="input-group white-bg edit-input-group">
+                    <span class="rm-tag">{{ user.symbol if user else 'RM' }}</span>
+                    <input type="number" name="selling_price" placeholder="0.00" min="0" step="0.01" required>
+                </div>
+            </div>
+
+            <!-- Ingredients -->
+            <div class="edit-field">
+                <label>Recipe &amp; Ingredients</label>
+                <div id="editIngredientContainer" style="display:flex;flex-direction:column;gap:8px;"></div>
+                <button type="button" id="editAddIngredientRowBtn" class="dashed-add-btn" style="margin-top:8px;">+ Add Ingredient</button>
+            </div>
+
+            <!-- Actions -->
+            <div class="edit-modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-save notranslate" data-key="save_changes">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Currency handled globally by base.html -->
+<script src="{{ url_for('static', filename='js/add_products.js') }}"></script>
+{% endblock %}

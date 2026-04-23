@@ -1,0 +1,358 @@
+{% extends 'base.html' %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet"/>
+
+<div class="main-content settings-page">
+  <div class="settings-container">
+
+    <h2>Profile Settings</h2>
+    <p class="settings-sub">You can edit your profile details here seamlessly.</p>
+
+    <!-- Profile Picture -->
+    <div class="setting-card">
+      <div class="setting-left">
+        <div class="setting-label">Profile Picture</div>
+        <img id="profilePreview"
+             src="{{ url_for('static', filename='assets/images/profile/' + (user.avatar if user and user.avatar else 'profile1.jpg')) }}"
+             class="setting-avatar">
+      </div>
+      <div class="setting-right">
+        <input type="file" id="profileUpload" accept="image/*" hidden>
+        <button class="edit-btn" onclick="document.getElementById('profileUpload').click()">Change</button>
+      </div>
+    </div>
+
+    <!-- Username -->
+    <div class="setting-card">
+      <div class="setting-left">
+        <div class="setting-label">Username</div>
+        <span class="setting-value" id="usernameDisplay">{{ user.username }}</span>
+      </div>
+      <div class="setting-right">
+        <button class="edit-btn" onclick="openUsernameModal()">Edit</button>
+      </div>
+    </div>
+
+    <!-- Email -->
+    <div class="setting-card">
+      <div class="setting-left">
+        <div class="setting-label">Email Address</div>
+        <span class="setting-value">{{ user.email }}</span>
+      </div>
+    </div>
+
+    <!-- Currency -->
+    <div class="setting-card">
+      <div class="setting-left">
+        <div class="setting-label">Currency</div>
+        <select id="currency" class="setting-input" onchange="onCurrencyChange()">
+          {% for cur in currencies %}
+            <option value="{{ cur.currency_id }}"
+                    data-rate="{{ cur.exchange_rate | default(1.0) }}"
+                    {% if user.currency_id == cur.currency_id %}selected{% endif %}>
+              {{ cur.currency_code }} ({{ cur.symbol }})
+            </option>
+          {% endfor %}
+        </select>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <label style="font-size:13px; color:#7a5c3a; font-weight:600;">
+            Exchange Rate (vs MYR base):
+          </label>
+          <input type="number" id="exchangeRateInput" step="0.000001" min="0.000001"
+                 style="width:130px; padding:6px 10px; border-radius:8px; border:1.5px solid #e0c97a; font-size:14px;"
+                 placeholder="e.g. 4.72">
+          <span style="font-size:12px; color:#aaa;">1 MYR = ? <span id="rateSymbolHint">{{ user.symbol }}</span></span>
+        </div>
+        <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button onclick="syncLiveRates()" id="syncRateBtn"
+                  style="background:#4BC8A0; color:#fff; border:none; padding:8px 18px;
+                         border-radius:20px; font-size:13px; font-weight:600; cursor:pointer;
+                         display:flex; align-items:center; gap:6px;">
+            🔄 Sync Live Rates
+          </button>
+          <span id="syncStatus" style="font-size:12px; color:#aaa;"></span>
+        </div>
+      </div>
+      <div class="setting-right">
+        <button class="edit-btn notranslate" data-key="save" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+
+    <!-- 🔥 Logout Button -->
+    <div class="logout-container">
+      <button class="logout" onclick="confirmLogout()">Log Out</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Username Modal -->
+<div id="usernameModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="closeUsernameModal()">&times;</span>
+    <h3>Edit Username</h3>
+    <input type="text" id="usernameInput" value="{{ user.username }}" class="setting-input">
+    <button class="edit-btn notranslate" data-key="save" onclick="saveUsername()">Save</button>
+  </div>
+</div>
+
+<!-- Crop Modal -->
+<div id="cropModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="closeCropModal()">&times;</span>
+    <h3>Crop Your Profile Picture</h3>
+    <img id="cropPreview" src="">
+    <div class="modal-buttons">
+      <button class="notranslate" data-key="save" onclick="applyCrop()">Save</button>
+      <button onclick="closeCropModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🔥 Logout Modal -->
+<div id="logoutModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" onclick="closeLogoutModal()">&times;</span>
+    <h3>Confirm Logout</h3>
+    <p>Are you sure you want to log out?</p>
+    <div class="modal-buttons">
+      <button onclick="doLogout()">Yes, Log Out</button>
+      <button onclick="closeLogoutModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+let cropper;
+let cropFile;
+
+// ===== Profile Image Crop =====
+const profileInput = document.getElementById('profileUpload');
+profileInput.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  cropFile = file;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const cropImage = document.getElementById('cropPreview');
+    cropImage.src = e.target.result;
+    document.getElementById('cropModal').style.display = 'flex';
+
+    if (cropper) cropper.destroy();
+    cropper = new Cropper(cropImage, {
+      aspectRatio: 1,
+      viewMode: 1,
+    });
+  };
+  reader.readAsDataURL(file);
+});
+
+function closeCropModal() {
+  document.getElementById('cropModal').style.display = 'none';
+  if (cropper) cropper.destroy();
+}
+
+function applyCrop() {
+  if (!cropper) return;
+
+  cropper.getCroppedCanvas({width:300, height:300}).toBlob(blob => {
+    const formData = new FormData();
+    formData.append('avatar', blob, 'avatar.png');
+
+    fetch('/upload_avatar', { method: 'POST', body: formData })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          const newPath = '/static/' + data.avatar_path;
+          document.getElementById('profilePreview').src = newPath + '?t=' + Date.now();
+          closeCropModal();
+        }
+      });
+  });
+}
+
+// ===== Username =====
+function openUsernameModal() {
+  document.getElementById('usernameModal').style.display = 'flex';
+}
+function closeUsernameModal() {
+  document.getElementById('usernameModal').style.display = 'none';
+}
+
+function saveUsername() {
+  const username = document.getElementById('usernameInput').value;
+
+  fetch('/update_settings', {
+    method: 'POST',
+    headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: `username=${encodeURIComponent(username)}`
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      document.getElementById('usernameDisplay').textContent = username;
+      closeUsernameModal();
+      showToast('✅ Username updated!');
+    } else {
+      showToast('❌ Failed to update username.', true);
+    }
+  });
+}
+
+// ===== Currency =====
+function onCurrencyChange() {
+  const sel = document.getElementById('currency');
+  const opt = sel.options[sel.selectedIndex];
+  const rate = parseFloat(opt.dataset.rate) || 1.0;
+  document.getElementById('exchangeRateInput').value = rate;
+  // Update hint symbol
+  const symMatch = opt.text.match(/\(([^)]+)\)/);
+  if (symMatch) document.getElementById('rateSymbolHint').textContent = symMatch[1];
+}
+
+// Init exchange rate field on load
+window.addEventListener('DOMContentLoaded', () => { onCurrencyChange(); });
+
+async function saveSettings() {
+  const currency_id   = document.getElementById('currency').value;
+  const exchange_rate = parseFloat(document.getElementById('exchangeRateInput').value);
+
+  if (isNaN(exchange_rate) || exchange_rate <= 0) {
+    showToast('❌ Please enter a valid exchange rate.', true);
+    return;
+  }
+
+  try {
+    // 1. Save currency selection
+    const r1 = await fetch('/update_settings', {
+      method: 'POST',
+      headers: {'Content-Type':'application/x-www-form-urlencoded'},
+      body: `currency_id=${currency_id}`
+    });
+    const d1 = await r1.json();
+    if (d1.status !== 'success') throw new Error(d1.message || 'Failed to save currency');
+
+    // 2. Save exchange rate
+    const r2 = await fetch('/api/update_currency_rate', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ currency_id: parseInt(currency_id), exchange_rate })
+    });
+    const d2 = await r2.json();
+    if (d2.status !== 'success') throw new Error(d2.message || 'Failed to save exchange rate');
+
+    showToast('✅ Currency & rate updated! Reloading…');
+    setTimeout(() => window.location.reload(), 1200);
+
+  } catch(err) {
+    showToast('❌ ' + (err.message || 'Save failed.'), true);
+  }
+}
+
+async function syncLiveRates() {
+  const btn    = document.getElementById('syncRateBtn');
+  const status = document.getElementById('syncStatus');
+
+  btn.disabled    = true;
+  btn.textContent = '⏳ Syncing…';
+  status.textContent = '';
+
+  try {
+    const res  = await fetch('/api/sync_exchange_rates', { method: 'POST' });
+    const data = await res.json();
+
+    if (data.status === 'success') {
+      showToast(`✅ Synced ${data.updated} currencies from live rates!`);
+      status.textContent = `Last synced · Next update: ${data.next_update || 'unknown'}`;
+      status.style.color = '#27ae60';
+
+      // Refresh the exchange rate shown for currently selected currency
+      const sel        = document.getElementById('currency');
+      const currency_id = parseInt(sel.value);
+
+      // Re-fetch updated rates from server and update option data-rate values
+      const ratesRes  = await fetch('/settings');  // re-fetch page would reload, instead re-fetch just the rate
+      // Simpler: just reload after short delay so new rates reflect
+      setTimeout(() => window.location.reload(), 1800);
+
+    } else {
+      showToast('❌ Sync failed: ' + (data.message || 'Unknown error'), true);
+      status.textContent = 'Sync failed — check internet connection';
+      status.style.color = '#e74c3c';
+    }
+  } catch (err) {
+    showToast('❌ Network error during sync', true);
+    status.textContent = 'Cannot reach rate API';
+    status.style.color = '#e74c3c';
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '🔄 Sync Live Rates';
+  }
+}
+function showToast(msg, isError = false) {
+  let toast = document.getElementById('settingsToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'settingsToast';
+    toast.style.cssText = `
+      position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+      background:${isError ? '#e74c3c' : '#27ae60'}; color:#fff;
+      padding:12px 28px; border-radius:30px; font-size:15px;
+      font-weight:600; box-shadow:0 4px 18px rgba(0,0,0,0.18);
+      z-index:9999; transition:opacity .3s;
+    `;
+    document.body.appendChild(toast);
+  }
+  toast.style.background = isError ? '#e74c3c' : '#27ae60';
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
+// ===== Logout =====
+function confirmLogout() {
+  document.getElementById('logoutModal').style.display = 'flex';
+}
+
+function closeLogoutModal() {
+  document.getElementById('logoutModal').style.display = 'none';
+}
+
+function doLogout() {
+  window.location = '/logout';
+}
+
+// ===== Click outside close =====
+window.onclick = function(event) {
+  const usernameModal = document.getElementById('usernameModal');
+  const cropModal = document.getElementById('cropModal');
+  const logoutModal = document.getElementById('logoutModal');
+
+  if (event.target === usernameModal) closeUsernameModal();
+  if (event.target === cropModal) closeCropModal();
+  if (event.target === logoutModal) closeLogoutModal(); 
+}
+</script>
+{% endblock %}
+
+
+<!-- === EMPTY STATE VERSION ===
+<div class="main-content">
+
+    <div class="card-section">
+        <h3 class="section-title">Settings</h3>
+
+        <div class="empty-state">
+            <div class="empty-icon">⚙️</div>
+            <h4>No Settings Configured</h4>
+            <p>Update your preferences and account settings</p>
+        </div>
+    </div>
+</div>

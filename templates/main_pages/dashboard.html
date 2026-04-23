@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="main-content">
+<div class="dashboard-content">
+
+    <!-- 1. RESTOCK REMINDER BANNER -->
+    <div class="restock-banner" id="restockBanner" style="display:none;">
+        <div class="restock-banner-left">
+            <div class="restock-icon-circle" id="restockCount">0</div>
+            <div class="restock-text">
+                <strong id="restockTitle">items need to restock soon</strong>
+                <p id="restockItems">Loading...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. DATE PICKER ROW -->
+    <div class="dash-date-row">
+        <span>Pick a Date Here</span>
+        <input type="date" class="dash-date-select" id="datePicker" style="cursor:pointer;">
+    </div>
+
+    <!-- 3. TOP SELLER + RECORD SALES ROW -->
+    <div class="dash-action-row">
+        <div class="dash-top-seller">
+            <div class="dash-top-seller-icon">👑</div>
+            <div>
+                <div class="dash-top-seller-label">Today's Top Seller</div>
+                <div class="dash-top-seller-name" id="topSellerName">—</div>
+            </div>
+        </div>
+        <a href="{{ url_for('sales') }}" class="dash-record-banner">
+            <div style="display:flex;align-items:center;gap:14px;">
+                <span style="font-size:36px;">🧾</span>
+                <span class="dash-record-text">Click To Record<br>Your Sales Today</span>
+            </div>
+            <span class="dash-record-arrow">→</span>
+        </a>
+    </div>
+
+    <!-- 4. STAT CARDS (now 5: Revenue, Sales, Cost, Gross Profit, Net Profit) -->
+    <div class="dash-stats-row" style="grid-template-columns: repeat(5,1fr);">
+        <div class="dash-stat-card">
+            <div class="dash-stat-icon stat-icon-yellow">💰</div>
+            <div>
+                <div class="dash-stat-label">Today's Revenue</div>
+                <div class="dash-stat-value" id="statRevenue">—</div>
+            </div>
+        </div>
+        <div class="dash-stat-card">
+            <div class="dash-stat-icon stat-icon-purple">📋</div>
+            <div>
+                <div class="dash-stat-label">Today's Sales</div>
+                <div class="dash-stat-value" id="statSales">—</div>
+            </div>
+        </div>
+        <div class="dash-stat-card">
+            <div class="dash-stat-icon stat-icon-teal">💸</div>
+            <div>
+                <div class="dash-stat-label">Today's Cost</div>
+                <div class="dash-stat-value" id="statCost">—</div>
+            </div>
+        </div>
+        <div class="dash-stat-card">
+            <div class="dash-stat-icon stat-icon-pink">📈</div>
+            <div>
+                <div class="dash-stat-label">Gross Profit</div>
+                <div class="dash-stat-value" id="statProfit">—</div>
+            </div>
+        </div>
+        <div class="dash-stat-card">
+            <div class="dash-stat-icon stat-icon-green">🏆</div>
+            <div>
+                <div class="dash-stat-label">Net Profit</div>
+                <div class="dash-stat-value" id="statNetProfit">—</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. MONTHLY + WEEKLY CHARTS -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:-10px;">
+        <span style="font-size:13px;color:#a07040;font-weight:600;">Click to Select Month</span>
+        <select class="dash-month-select" id="yearPicker"></select>
+        <select class="dash-month-select" id="monthPicker">
+            <option value="1">January</option><option value="2">February</option>
+            <option value="3">March</option><option value="4">April</option>
+            <option value="5">May</option><option value="6">June</option>
+            <option value="7">July</option><option value="8">August</option>
+            <option value="9">September</option><option value="10">October</option>
+            <option value="11">November</option><option value="12">December</option>
+        </select>
+    </div>
+    <div class="dash-charts-row">
+        <div class="dash-chart-card">
+            <div class="dash-chart-title">Monthly Sales Report</div>
+            <canvas id="monthlyChart" height="200"></canvas>
+        </div>
+        <div class="dash-chart-card">
+            <div class="dash-chart-title">Weekly Sales Report</div>
+            <canvas id="weeklyChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- 6. PRODUCT SALES PIE + LIST -->
+    <div class="dash-bottom-row">
+        <div class="dash-chart-card">
+            <div class="dash-chart-title">Monthly Product Sales</div>
+            <div style="max-width:260px;margin:0 auto;"><canvas id="productPieChart"></canvas></div>
+            <div id="productPieLegend" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px;font-size:13px;color:#3E1A03;"></div>
+        </div>
+        <div class="dash-product-list-card">
+            <div class="dash-chart-title">List of Product Sale's</div>
+            <div id="productSaleList"></div>
+        </div>
+    </div>
+
+    <!-- 7. EXPENSES LIST + MONTHLY EXPENSES PIE -->
+    <div class="dash-bottom-row" style="align-items:start;">
+
+        <!-- Expense Cards -->
+        <div class="dash-chart-card">
+            <div class="dash-chart-title">Expenses List (per month)</div>
+            <div class="expense-cards-row">
+
+                <!-- Rental -->
+                <div class="expense-card" id="expCard-rental">
+                    <div class="expense-card-label">Rental</div>
+                    <div class="expense-card-icon">🏠</div>
+                    <div class="expense-card-amount-row" id="expView-rental">
+                        <button class="exp-adj-btn" onclick="adjustExp('rental',-50)">➖</button>
+                        <span class="expense-amount" id="expAmt-rental">
+                            {{ user.symbol if user else 'RM' }} <span id="expVal-rental">0</span>
+                        </span>
+                        <button class="exp-adj-btn" onclick="adjustExp('rental',50)">➕</button>
+                    </div>
+                    <div class="expense-card-amount-row" id="expEdit-rental" style="display:none;">
+                        <input type="number" class="exp-input" id="expInput-rental" min="0" step="1" placeholder="0">
+                    </div>
+                    <button class="exp-action-btn notranslate" data-key="save" id="expBtn-rental" onclick="saveExpense('rental')">Save</button>
+                </div>
+
+                <!-- F&B -->
+                <div class="expense-card" id="expCard-fnb">
+                    <div class="expense-card-label">F&amp;B</div>
+                    <div class="expense-card-icon">🍱</div>
+                    <div class="expense-card-amount-row" id="expView-fnb">
+                        <button class="exp-adj-btn" onclick="adjustExp('fnb',-50)">➖</button>
+                        <span class="expense-amount" id="expAmt-fnb">
+                            {{ user.symbol if user else 'RM' }} <span id="expVal-fnb">0</span>
+                        </span>
+                        <button class="exp-adj-btn" onclick="adjustExp('fnb',50)">➕</button>
+                    </div>
+                    <div class="expense-card-amount-row" id="expEdit-fnb" style="display:none;">
+                        <input type="number" class="exp-input" id="expInput-fnb" min="0" step="1" placeholder="0">
+                    </div>
+                    <button class="exp-action-btn notranslate" data-key="save" id="expBtn-fnb" onclick="saveExpense('fnb')">Save</button>
+                </div>
+
+                <!-- Other -->
+                <div class="expense-card" id="expCard-other">
+                    <div class="expense-card-label">Other</div>
+                    <div class="expense-card-icon">🧾</div>
+                    <div class="expense-card-amount-row" id="expView-other">
+                        <button class="exp-adj-btn" onclick="adjustExp('other',-50)">➖</button>
+                        <span class="expense-amount" id="expAmt-other">
+                            {{ user.symbol if user else 'RM' }} <span id="expVal-other">0</span>
+                        </span>
+                        <button class="exp-adj-btn" onclick="adjustExp('other',50)">➕</button>
+                    </div>
+                    <div class="expense-card-amount-row" id="expEdit-other" style="display:none;">
+                        <input type="number" class="exp-input" id="expInput-other" min="0" step="1" placeholder="0">
+                    </div>
+                    <button class="exp-action-btn notranslate" data-key="save" id="expBtn-other" onclick="saveExpense('other')">Save</button>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Monthly Expenses Pie -->
+        <div class="dash-chart-card">
+            <div class="dash-chart-title">Monthly Expenses</div>
+            <div style="max-width:260px;margin:0 auto;"><canvas id="expensePieChart"></canvas></div>
+            <div id="expensePieLegend" style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px;font-size:13px;color:#3E1A03;"></div>
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+<script>
+    <!-- currency handled by base.html -->
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

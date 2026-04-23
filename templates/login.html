@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="{{ url_for('static', filename='assets/icons/logo.png') }}" type="image/png">
+  <title>Vendora</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-body">
+
+  <!-- Language Switch -->
+  <div class="lang-switch">
+    🌐
+    <select id="languageSwitcher" onchange="changeLanguage(this.value)">
+      <option value="en">English</option>
+      <option value="zh">中文</option>
+      <option value="ms">Bahasa Melayu</option>
+      <option value="id">Indonesia</option>
+      <option value="bn">বাংলা</option>
+      <option value="ne">नेपाली</option>
+      <option value="hi">हिन्दी</option>
+      <option value="my">မြန်မာ</option>
+      <option value="ph">Filipino</option>
+      <option value="vi">Tiếng Việt</option>
+    </select>
+  </div>
+
+  <!-- Login Card -->
+  <div class="login-card">
+
+    <h1 data-lang="loginTitle">Login</h1>
+
+    <!-- Email -->
+    <label data-lang="emailLabel"><span class="icon">📩</span> Email</label>
+    <div class="input-group">
+      <input type="email" id="emailInput" data-lang-placeholder="email" placeholder="example@gmail.com">
+    </div>
+
+    <!-- Password -->
+    <label data-lang="passwordLabel"><span class="icon">🔒</span> Password</label>
+    <div class="input-group">
+      <input type="password" id="passwordInput" data-lang-placeholder="password" placeholder="Enter your password here...">
+    </div>
+
+    <!-- Forgot password -->
+    <div class="login-row">
+      <label class="remember-label">
+        <input type="checkbox" id="rememberMe">
+        <span data-lang="rememberMe">Remember me</span>
+      </label>
+      <a href="/reset_password" class="forgot" data-lang="forgot">Forgot Password?</a>
+    </div>
+
+    <!-- Login button -->
+    <button class="login-btn" data-lang="loginBtn" onclick="login()">Login</button>
+
+    <!-- Register -->
+    <p class="register-text">
+      <span data-lang="noAccount">Don't have an account yet?</span>
+      <a href="{{ url_for('signup_page') }}" data-lang="register">Register for free</a>
+    </p>
+
+    <!-- Error message -->
+    <p id="loginErrorMsg" class="error-msg" style="display:none" data-lang="loginError"></p>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bg.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="{{ url_for('static', filename='assets/icons/logo.png') }}" type="image/png">
+  <title>Vendora</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <script>
+    setTimeout(function () {
+      window.location.href = "{{ url_for('login_page') }}";
+    }, 3000);
+  </script>
+</head>
+<body class="splash-body">
+
+  <div class="splash-container">
+    <img src="{{ url_for('static', filename='assets/icons/logo.png') }}" class="splash-logo">
+  </div>
+
+</body>
+</html>

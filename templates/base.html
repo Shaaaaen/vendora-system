@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="{{ url_for('static', filename='assets/icons/logo.png') }}" type="image/png">
+  <title>{% block title %}Vendora{% endblock %}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/mainpage.css') }}">
+
+  <!-- Inject currency info globally so ALL pages can use fmtCurrency() -->
+  <script>
+    window.currencySymbol = "{{ user.symbol if user and user.symbol else 'RM' }}";
+    window.currencyRate   = "{{ user.exchange_rate if user and user.exchange_rate else '1' }}";
+  </script>
+  <div id="google_translate_element" style="display:none;"></div>
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+
+  {% include 'components/sidebar.html' %}
+  {% include 'components/header.html' %}
+
+  <!-- content wraps everything after the header; footer sits naturally at bottom -->
+  <div class="content">
+    {% block content %}{% endblock %}
+    {% include 'components/footer.html' %}
+  </div>
+
+</body>
+</html>

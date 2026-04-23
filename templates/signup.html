@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="{{ url_for('static', filename='assets/icons/logo.png') }}" type="image/png">
+  <title>Vendora</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
+<body class="signup-body">
+
+<div class="signup-container">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="left-content">
+      <h2 class="left-title" data-lang="welcome"><b>Welcome to Vendora!</b></h2>
+      <p class="left-subtitle" data-lang="subtitle">Start managing your small business easily.</p>
+      <img src="{{ url_for('static', filename='assets/icons/signup_bg.png') }}" class="left-image">
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+      <!-- Language Switcher -->
+      <div class="lang-switch">
+        🌐
+        <select id="languageSwitcher" onchange="changeLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="ms">Bahasa Melayu</option>
+          <option value="id">Indonesia</option>
+          <option value="bn">বাংলা</option>
+          <option value="ne">नेपाली</option>
+          <option value="hi">हिन्दी</option>
+          <option value="my">မြန်မာ</option>
+          <option value="ph">Filipino</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+      </div>
+
+      <!-- Signup Form -->
+      <div class="signup-title">
+        <h2 data-lang="signup"><b>Sign Up</b></h2>
+      </div>
+
+      <div class="info-card">
+            <div class="input-group">
+                <i class="fa-solid fa-user"></i>
+                <input type="text" id="username" data-lang-placeholder="username" placeholder="Username">
+            </div>
+            <div class="input-group">
+                <i class="fa-solid fa-envelope"></i>
+                <input type="email" id="email" data-lang-placeholder="email" placeholder="Email Address">
+            </div>
+            <div class="input-group password-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="password" data-lang-placeholder="password" placeholder="Password">
+                <!-- <span class="toggle-password" onclick="togglePassword('password', this)">👁️</span> -->
+            </div>
+            <div class="input-group password-group">
+                <i class="fa-solid fa-lock"></i>
+                <input type="password" id="confirmPassword" data-lang-placeholder="confirm" placeholder="Confirm Password">
+                <!-- <span class="toggle-password" onclick="togglePassword('confirmPassword', this)">👁️</span> -->
+            </div>
+            <button onclick="goToSecurity()" data-lang="next">Next</button>
+            <p class="login-text">
+              <a href="{{ url_for('login_page') }}"><u data-lang="alreadyHaveAccount">Already have an account?</u> <span data-lang="login">Login</span></a>
+            </p>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress">
+        <span class="pill active"></span>
+        <span class="pill"></span>
+      </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/signup.js') }}"></script>
+</body>
+</html>
