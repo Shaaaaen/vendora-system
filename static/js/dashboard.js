@@ -26,7 +26,6 @@ function currentMonthYear() {
 document.addEventListener('DOMContentLoaded', async () => {
     buildDatePicker();
     setDefaultMonth();
-    buildYearPicker();
 
     await Promise.all([
         loadRestockAlert(),
@@ -37,10 +36,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadTodayStats();  // needs expenses loaded
     await loadCharts();
 
+    document.getElementById('monthPickerUI').addEventListener('change', loadCharts);
     document.getElementById('monthPicker').addEventListener('change', loadCharts);
     document.getElementById('datePicker').addEventListener('change', loadTodayStats);
-    document.getElementById('yearPicker').addEventListener('change', loadCharts);
 });
+
 
 // ── DATE PICKER ───────────────────────────
 function buildDatePicker() {
@@ -55,8 +55,16 @@ function formatDate(d) {
 }
 
 function setDefaultMonth() {
-    document.getElementById('monthPicker').value = new Date().getMonth() + 1;
+    const el = document.getElementById('monthPickerUI');
+    if (!el) return;
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+
+    el.value = `${year}-${month}`; 
 }
+
 
 // ── RESTOCK ALERT ────────────────────────
 async function loadRestockAlert() {
@@ -113,9 +121,8 @@ async function loadTopSeller() {
 
 // ── CHARTS ───────────────────────────────
 async function loadCharts() {
-    const month = document.getElementById('monthPicker').value;
-    const year  = new Date().getFullYear();
-
+    const { year, month } = getSelectedMonthYear();
+    
     const [monthlyRes, weeklyRes, productRes] = await Promise.all([
         fetch(`/api/dashboard/monthly_sales?year=${year}`),
         fetch(`/api/dashboard/weekly_sales?year=${year}&month=${month}`),
@@ -124,6 +131,7 @@ async function loadCharts() {
 
     drawMonthlyChart(await monthlyRes.json());
     drawWeeklyChart(await weeklyRes.json());
+
     const products = await productRes.json();
     drawProductPie(products);
     drawProductList(products);
@@ -295,24 +303,21 @@ function drawExpensePie() {
     ).join('');
 }
 
-//function year picker
-function buildYearPicker() {
-    const yearSelect = document.getElementById('yearPicker');
-    const currentYear = new Date().getFullYear();
+function getSelectedMonthYear() {
+    const el = document.getElementById('monthPickerUI');
 
-    for (let y = currentYear; y >= currentYear - 5; y--) {
-        const opt = document.createElement('option');
-        opt.value = y;
-        opt.textContent = y;
-        yearSelect.appendChild(opt);
+    if (!el.value) {
+        const now = new Date();
+        return {
+            year: now.getFullYear(),
+            month: now.getMonth() + 1
+        };
     }
 
-    yearSelect.value = currentYear;
-}
+    const [year, month] = el.value.split('-');
 
-function getSelectedMonthYear() {
     return {
-        month: parseInt(document.getElementById('monthPicker').value),
-        year: parseInt(document.getElementById('yearPicker').value)
+        year: parseInt(year),
+        month: parseInt(month)
     };
 }
