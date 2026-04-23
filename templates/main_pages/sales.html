@@ -57,32 +57,50 @@
             <span class="close-btn" onclick="closeHistoricalSaleModal()">✕</span>
         </div>
         <div class="add-sale-form-body">
-
-            <!-- Date (required) -->
+            
+            <!-- Mode-->
             <div class="input-block">
-                <label>📆 Sale Date <span style="color:#e74c3c">*</span></label>
-                <div class="input-group">
-                    <input type="date" id="histDate" style="width:100%; padding:10px; border:none; background:transparent; font-size:14px;">
+                <label>Mode</label>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" id="modeSingleBtn" onclick="setHistMode('single')">Single Day</button>
+                    <button type="button" id="modeMultiBtn" onclick="setHistMode('multi')">Multi Days</button>
                 </div>
             </div>
 
-            <!-- Total Profit (required) -->
-            <div class="input-block">
-                <label>💰 Total Profit for that Day <span style="color:#e74c3c">*</span></label>
-                <div class="input-group" style="display:flex; align-items:center; gap:8px;">
-                    <span style="font-weight:700; color:#7a5c3a; padding-left:8px;" id="histSymbol">RM</span>
-                    <input type="number" id="histProfit" min="0" step="0.01" placeholder="e.g. 250.00"
-                           style="flex:1; padding:10px; border:none; background:transparent; font-size:14px;">
+            <div id="singleModeBox">
+                <!-- Date (required) -->
+                <div class="input-block">
+                    <label>📆 Sale Date <span style="color:#e74c3c">*</span></label>
+                    <div class="input-group">
+                        <input type="date" id="histDate" style="width:100%; padding:10px; border:none; background:transparent; font-size:14px;">
+                    </div>
                 </div>
-            </div>
 
-            <!-- Items (optional) -->
-            <div class="input-block">
-                <label>🛒 Items Sold <span style="color:#aaa; font-size:12px;">(optional)</span></label>
-                <div id="histItemsList"></div>
-                <button type="button" onclick="addHistItem()"
-                        style="margin-top:8px; background:#f4c245; border:none; padding:7px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;">
+                <!-- Total Profit (required) -->
+                <div class="input-block">
+                    <label>💰 Total Profit for that Day <span style="color:#e74c3c">*</span></label>
+                     <div class="input-group" style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-weight:700; color:#7a5c3a; padding-left:8px;" id="histSymbol">RM</span>
+                        <input type="number" id="histProfit" min="0" step="0.01" placeholder="e.g. 250.00"
+                            style="flex:1; padding:10px; border:none; background:transparent; font-size:14px;">
+                    </div>
+                </div>
+
+                <!-- Items (optional) -->
+                <div class="input-block">
+                    <label>🛒 Items Sold <span style="color:#aaa; font-size:12px;">(optional)</span></label>
+                    <div id="histItemsList"></div>
+                 <button type="button" onclick="addHistItem()"
+                     style="margin-top:8px; background:#f4c245; border:none; padding:7px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;">
                     + Add Item
+                 </button>
+                </div>
+            </div>
+
+            <div id="multiModeBox" style="display:none;">
+                <div id="multiHistList" class="accordion-list"></div>
+                <button type="button" onclick="addHistRow()" style="margin-top:10px;">
+                    + Add Row
                 </button>
             </div>
 
@@ -130,4 +148,5 @@
     window.currencySymbol = "{{ user.symbol if user else 'RM' }}";
 </script>
 <script src="{{ url_for('static', filename='js/add_sales.js') }}"></script>
+
 {% endblock %}
