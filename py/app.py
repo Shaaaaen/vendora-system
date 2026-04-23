@@ -37,7 +37,27 @@ _forecast_lock    = threading.Lock()
 FORECAST_TTL_SECS = 3600   # re-run if cached result is older than 1 hour
 
 # --- DB ---
+# def get_db_connection():
+#     return mysql.connector.connect(
+#         host=os.environ.get('DB_HOST', 'localhost'),
+#         user=os.environ.get('DB_USER', 'root'),
+#         password=os.environ.get('DB_PASSWORD', '777'),
+#         database=os.environ.get('DB_NAME', 'vendora_db')
+#     )
 def get_db_connection():
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        # Railway provides a full URL like mysql://user:pass@host:port/db
+        import urllib.parse
+        parsed = urllib.parse.urlparse(database_url)
+        return mysql.connector.connect(
+            host=parsed.hostname,
+            port=parsed.port or 3306,
+            user=parsed.username,
+            password=parsed.password,
+            database=parsed.path.lstrip('/')
+        )
+    # Fallback to individual env vars (local dev)
     return mysql.connector.connect(
         host=os.environ.get('DB_HOST', 'localhost'),
         user=os.environ.get('DB_USER', 'root'),
@@ -1922,4 +1942,5 @@ def logout():
     return redirect(url_for('login_page'))
 
 if __name__ == '__main__':
-    app.run(debug=True, use_reloader=False, threaded=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
