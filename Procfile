@@ -1,1 +1,1 @@
-web: gunicorn --chdir py app:app --workers 2 --threads 4 --timeout 120
+web: gunicorn --chdir py app:app --workers 1 --threads 2 --timeout 120
