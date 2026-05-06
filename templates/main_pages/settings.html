@@ -16,7 +16,7 @@
       <div class="setting-left">
         <div class="setting-label">Profile Picture</div>
         <img id="profilePreview"
-             src="{{ url_for('static', filename='assets/images/profile/' + (user.avatar if user and user.avatar else 'profile1.jpg')) }}"
+             src="{{ user.avatar if user and user.avatar and user.avatar.startswith('http') else url_for('static', filename='assets/images/profile/' + (user.avatar if user and user.avatar else 'profile1.jpg')) }}"
              class="setting-avatar">
       </div>
       <div class="setting-right">

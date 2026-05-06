@@ -48,7 +48,7 @@
             <div class="forecast-model-badges" id="modelBadges">
                 <span class="fc-badge fc-badge-prophet">Prophet</span>
                 <span class="fc-badge fc-badge-hybrid">Hybrid</span>
-                <span class="fc-badge fc-badge-lstm">LSTM</span>
+                <span class="fc-badge fc-badge-xgb">XGBoost</span>
             </div>
             <div id="chartArea">
                 <div class="forecast-loading">
@@ -91,13 +91,13 @@
                         <div class="forecast-acc-desc" id="hybridAccuracy">Accuracy: —</div>
                         <div id="hybridWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
                     </div>
-                    <div class="forecast-accuracy-card forecast-acc-lstm" id="lstmCard">
-                        <div class="forecast-acc-label" id="lstmLabel">LSTM</div>
-                        <div class="forecast-acc-wmape" id="lstmWmape">—</div>
+                    <div class="forecast-accuracy-card forecast-acc-xgb" id="xgbCard">
+                        <div class="forecast-acc-label" id="xgbLabel">XGBoost</div>
+                        <div class="forecast-acc-wmape" id="xgbWmape">—</div>
                         <div class="forecast-acc-desc">WMAPE (open days)</div>
-                        <div class="forecast-acc-desc" id="lstmMae">MAE: —</div>
-                        <div class="forecast-acc-desc" id="lstmAccuracy">Accuracy: —</div>
-                        <div id="lstmWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                        <div class="forecast-acc-desc" id="xgbMae">MAE: —</div>
+                        <div class="forecast-acc-desc" id="xgbAccuracy">Accuracy: —</div>
+                        <div id="xgbWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
                     </div>
                 </div>
             </div>
@@ -153,6 +153,25 @@ function formatDateLabel(dateStr) {
     return `${DAYS_OF_WEEK[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
 }
 
+
+// ── Browser notification when forecast finishes ──────────────
+let _prevStatus = null;
+
+function _requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+function _notifyForecastDone() {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Forecast ready! 🎯', {
+            body: 'Your sales forecast has been updated.',
+            icon: '/static/assets/icons/logo.ico'
+        });
+    }
+}
+
 function setRange(days) {
     currentDays = days;
     document.querySelectorAll('.forecast-range-btn').forEach(btn => {
@@ -187,11 +206,15 @@ async function loadForecast(isPolling = false) {
             if (el) el.textContent = '⏳ AI models are running in the background… page stays usable!';
             if (_pollTimer) clearTimeout(_pollTimer);
             _pollTimer = setTimeout(() => loadForecast(true), 5000);
+            _prevStatus = 'computing';
             return;
         }
 
         // ── Stop any pending poll ────────────────────────────
         if (_pollTimer) { clearTimeout(_pollTimer); _pollTimer = null; }
+        // Notify user when forecast finishes computing
+        if (_prevStatus === 'computing' && data.status === 'ok') { _notifyForecastDone(); }
+        _prevStatus = data.status;
 
         if (data.status === 'no_data') {
             document.getElementById('chartArea').innerHTML = `
@@ -285,7 +308,7 @@ function renderChart(data) {
     const recent   = data.recent_actuals   || [];
     const propPred = data.prophet.predictions || [];
     const hybPred  = data.hybrid.predictions  || [];
-    const lstmPred = data.lstm_skipped ? [] : (data.lstm.predictions || []);
+    const xgbPred  = data.xgb_skipped ? [] : (data.xgb.predictions || []);
 
     // Build combined x-axis: recent actuals + predictions
     const allDates   = [...recent.map(r => r.date), ...bestPred.map(p => p.date)];
@@ -294,14 +317,14 @@ function renderChart(data) {
     const actualMap = {}; recent.forEach(r  => { actualMap[r.date] = r.actual; });
     const propMap   = {}; propPred.forEach(p => { propMap[p.date]  = p.predicted; });
     const hybMap    = {}; hybPred.forEach(p  => { hybMap[p.date]   = p.predicted; });
-    const lstmMap   = {}; lstmPred.forEach(p => { lstmMap[p.date]  = p.predicted; });
+    const xgbMap    = {}; xgbPred.forEach(p  => { xgbMap[p.date]   = p.predicted; });
 
     const labels     = uniqueDates.map(formatDateLabel);
     const actualVals = uniqueDates.map(d => actualMap[d] !== undefined ? actualMap[d] * rate : null);
     const propVals   = uniqueDates.map(d => propMap[d]  !== undefined ? propMap[d]  * rate : null);
     const hybVals    = uniqueDates.map(d => hybMap[d]   !== undefined ? hybMap[d]   * rate : null);
-    const lstmVals   = data.lstm_skipped ? null
-                     : uniqueDates.map(d => lstmMap[d] !== undefined  ? lstmMap[d]  * rate : null);
+    const xgbVals    = data.xgb_skipped ? null
+                     : uniqueDates.map(d => xgbMap[d] !== undefined ? xgbMap[d] * rate : null);
 
     if (forecastChart) { forecastChart.destroy(); forecastChart = null; }
     document.getElementById('chartArea').innerHTML = '<canvas id="forecastCanvas" style="max-height:340px;"></canvas>';
@@ -335,13 +358,13 @@ function renderChart(data) {
         }
     ];
 
-    if (!data.lstm_skipped && lstmVals) {
+    if (!data.xgb_skipped && xgbVals) {
         datasets.push({
-            label: 'LSTM',
-            data: lstmVals,
+            label: 'XGBoost',
+            data: xgbVals,
             borderColor: '#4BC8A0', backgroundColor: 'rgba(75,200,160,0.08)',
-            borderWidth: winner === 'lstm' ? 3 : 1.5,
-            borderDash: winner === 'lstm' ? [] : [5,3],
+            borderWidth: winner === 'xgb' ? 3 : 1.5,
+            borderDash: winner === 'xgb' ? [] : [5,3],
             pointRadius: 4, pointBackgroundColor: '#4BC8A0',
             tension: 0.3, fill: false, spanGaps: false
         });
@@ -378,10 +401,10 @@ function renderChart(data) {
     const badgesEl = document.getElementById('modelBadges');
     let badgeHtml = `<span class="fc-badge fc-badge-prophet">Prophet</span>`;
     badgeHtml    += `<span class="fc-badge fc-badge-hybrid">Hybrid</span>`;
-    if (!data.lstm_skipped) {
-        badgeHtml += `<span class="fc-badge fc-badge-lstm">LSTM</span>`;
+    if (!data.xgb_skipped) {
+        badgeHtml += `<span class="fc-badge fc-badge-xgb">XGBoost</span>`;
     } else {
-        badgeHtml += `<span class="fc-badge" style="background:#f5f5f5;color:#888;border:1.5px solid #ddd;">LSTM (60+ days needed)</span>`;
+        badgeHtml += `<span class="fc-badge" style="background:#f5f5f5;color:#888;border:1.5px solid #ddd;">XGBoost (needs 20+ days)</span>`;
     }
     badgeHtml += `<span class="fc-badge fc-badge-active">✓ Using: ${winner.toUpperCase()}</span>`;
     badgesEl.innerHTML = badgeHtml;
@@ -390,7 +413,7 @@ function renderChart(data) {
 function renderAccuracy(data) {
     const pM  = data.prophet.metrics || {};
     const hM  = data.hybrid.metrics  || {};
-    const lM  = data.lstm_skipped ? null : (data.lstm.metrics || {});
+    const lM  = data.xgb_skipped ? null : (data.xgb.metrics || {});
 
     const fmtWmape = (v) => v !== undefined && !isNaN(v) ? (v * 100).toFixed(1) + '%' : '—';
     const fmtMae   = (v) => v !== undefined && !isNaN(v) ? 'MAE: RM ' + v.toFixed(2) : 'MAE: —';
@@ -408,35 +431,35 @@ function renderAccuracy(data) {
     document.getElementById('hybridAccuracy').textContent = 'Accuracy: ' + fmtAcc(hM.accuracy);
     document.getElementById('hybridWinner').style.display = data.winner === 'hybrid' ? 'inline-flex' : 'none';
 
-    // LSTM card
-    const lstmCard = document.getElementById('lstmCard');
-    if (data.lstm_skipped) {
-        document.getElementById('lstmLabel').textContent    = 'LSTM';
-        document.getElementById('lstmWmape').textContent    = 'N/A';
-        document.getElementById('lstmMae').textContent      = 'Need 60+ days of data';
-        document.getElementById('lstmAccuracy').textContent = '';
-        document.getElementById('lstmWinner').style.display = 'none';
-        lstmCard.style.opacity = '0.5';
+    // XGBoost card
+    const xgbCard = document.getElementById('xgbCard');
+    if (data.xgb_skipped) {
+        document.getElementById('xgbLabel').textContent    = 'XGBoost';
+        document.getElementById('xgbWmape').textContent    = 'N/A';
+        document.getElementById('xgbMae').textContent      = 'Need 60+ days of data';
+        document.getElementById('xgbAccuracy').textContent = '';
+        document.getElementById('xgbWinner').style.display = 'none';
+        xgbCard.style.opacity = '0.5';
     } else {
-        document.getElementById('lstmLabel').textContent    = 'LSTM';
-        document.getElementById('lstmWmape').textContent    = fmtWmape(lM.wmape_open);
-        document.getElementById('lstmMae').textContent      = fmtMae(lM.mae);
-        document.getElementById('lstmAccuracy').textContent = 'Accuracy: ' + fmtAcc(lM.accuracy);
-        document.getElementById('lstmWinner').style.display = data.winner === 'lstm' ? 'inline-flex' : 'none';
-        lstmCard.style.opacity = '1';
+        document.getElementById('xgbLabel').textContent    = 'XGBoost';
+        document.getElementById('xgbWmape').textContent    = fmtWmape(lM.wmape_open);
+        document.getElementById('xgbMae').textContent      = fmtMae(lM.mae);
+        document.getElementById('xgbAccuracy').textContent = 'Accuracy: ' + fmtAcc(lM.accuracy);
+        document.getElementById('xgbWinner').style.display = data.winner === 'xgb' ? 'inline-flex' : 'none';
+        xgbCard.style.opacity = '1';
     }
 
     document.getElementById('accuracySection').style.display = 'block';
 
     // Selection info text
     const infoEl = document.getElementById('modelSelectionInfo');
-    const winnerName = { prophet: 'Prophet', hybrid: 'Hybrid', lstm: 'LSTM' }[data.winner] || data.winner;
+    const winnerName = { prophet: 'Prophet', hybrid: 'Hybrid', xgb: 'XGBoost' }[data.winner] || data.winner;
     const pA = fmtAcc(pM.accuracy); const hA = fmtAcc(hM.accuracy);
-    if (!data.lstm_skipped) {
-        const lA = fmtAcc(lM.accuracy);
-        infoEl.innerHTML = `<strong>${winnerName}</strong> selected as best model (Prophet: ${pA} · Hybrid: ${hA} · LSTM: ${lA} — based on WMAPE on open trading days).`;
+    if (!data.xgb_skipped) {
+        const xA = fmtAcc(lM.accuracy);
+        infoEl.innerHTML = `<strong>${winnerName}</strong> selected as best model (Prophet: ${pA} · Hybrid: ${hA} · XGBoost: ${xA} — based on WMAPE on open trading days).`;
     } else {
-        infoEl.innerHTML = `<strong>${winnerName}</strong> selected (Prophet: ${pA} · Hybrid: ${hA}). LSTM requires 60+ days of data (you have ${data.total_rows}).`;
+        infoEl.innerHTML = `<strong>${winnerName}</strong> selected (Prophet: ${pA} · Hybrid: ${hA}). XGBoost needs 20+ days of data (you have ${data.total_rows}).`;
     }
     infoEl.style.display = 'block';
 }
@@ -454,7 +477,7 @@ function renderTable(data) {
 
     const winnerClass = data.winner === 'prophet' ? 'fc-badge-prophet'
                       : data.winner === 'hybrid'  ? 'fc-badge-hybrid'
-                      : 'fc-badge-lstm';
+                      : 'fc-badge-xgb';
 
     tbody.innerHTML = preds.map(p => {
         const d   = new Date(p.date + 'T00:00:00');
@@ -495,6 +518,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     const label = now.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', weekday:'long' });
     document.getElementById('todayLabel').textContent = `Today: ${label}`;
+    _requestNotificationPermission();
     loadForecast();
 });
 </script>
