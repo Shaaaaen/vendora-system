@@ -438,3 +438,7 @@ button:hover { opacity: 0.9; }
 .restock-item-info { display: flex; gap: 12px; align-items: center; }
 .restock-shortage-pill { background: #FF3B3B; color: white; border-radius: 10px; padding: 2px 10px; font-size: 11px; font-weight: 800; }
 .restock-needed-pill { background: #FFD271; color: #5a2d0c; border-radius: 10px; padding: 2px 10px; font-size: 11px; font-weight: 800; }
+/* ===== XGBoost (replaces LSTM) — same teal colour palette ===== */
+.fc-badge-xgb        { background: #E0FAF4; color: #167358; border: 1.5px solid #7de0c4; }
+.forecast-acc-xgb    { background: #E0FAF4; border: 1.5px solid #7de0c4; }
+.forecast-acc-xgb .forecast-acc-label { color: #167358; }
