@@ -1,42 +1,63 @@
 # Python cache files
 __pycache__/
 *.pyc
+*.pyo
 
 # Virtual environments
 venv/
 env/
 .venv/
 
-# Environment variables
+# Environment variables (passwords, API keys, credentials)
+# NEVER commit .env — it contains database passwords,
+# Cloudinary keys, and Aiven credentials
 .env
+.env.*
+
+# Private / sensitive data files
+# Real vendor business data — privacy issue
+sources/MY_Private_Dataset.csv
+sources/uci_micro_vendor.csv
+sources/retail_store_inventory.csv
+sources/9. Sales-Data-Analysis.csv
+
+# Generated evaluation outputs — not source code
+py/model_evaluation_results.csv
+py/Figure5_6_WMAPE_Chart.png
 
 # Flask instance folder
 instance/
 
-# IDE settings
+# IDE and editor settings
 .vscode/
 .idea/
+*.code-workspace
 
 # OS-specific files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Python build files
 *.egg-info/
 dist/
 build/
+*.egg
 
 # Local database files
 *.db
 *.sqlite3
 
-# Compiled static files
+# Compiled/minified static files
 *.map
-*.min.js
-*.min.css
 
 # Logs
 *.log
 
-# Python version
+# Python version manager
 .python-version
+
+# Temporary files
+tempCodeRunnerFile.py
+tmp/
+temp/

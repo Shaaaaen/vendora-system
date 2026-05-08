@@ -6,7 +6,7 @@
   <div class="header-right">
 
     <!-- Language switch (do later) -->
-<div class="lang-switch" translate="no">
+    <div class="lang-switch" translate="no">
       🌐
       <select onchange="changeLanguage(this.value)">
         <option value="en">English</option>
@@ -23,13 +23,15 @@
     </div>
 
     <!-- Profile image -->
-    {% set profile_img = 'profile1.jpg' %}
-    {% if user is defined and user and user.avatar %}
-      {% set profile_img = user.avatar %}
+    {% if user and user.avatar and user.avatar.startswith('http') %}
+      <img src="{{ user.avatar }}" class="profile-icon" onclick="openProfile()">
+    {% else %}
+      {% set profile_img = 'profile1.jpg' %}
+      {% if user is defined and user and user.avatar %}
+        {% set profile_img = user.avatar %}
+      {% endif %}
+      <img src="{{ url_for('static', filename='assets/images/profile/' + profile_img) }}" class="profile-icon" onclick="openProfile()">
     {% endif %}
-
-    <img src="{{ url_for('static', filename='assets/images/profile/' + profile_img) }}"
-         class="profile-icon" onclick="openProfile()">
 
   </div>
 </div>
