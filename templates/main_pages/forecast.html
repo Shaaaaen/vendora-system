@@ -5,30 +5,7 @@
 <div class="main-content">
 <div class="forecast-content">
 
-    <!-- ── NOTIFICATION PERMISSION BANNER ────────── -->
-    <!-- Shown when permission = 'default' (not yet decided) -->
-    <div id="notifBanner" style="display:none; align-items:center; gap:12px; flex-wrap:wrap;
-         background:#fffbe6; border:1.5px solid #f5c842; border-radius:12px;
-         padding:12px 18px; margin-bottom:14px; font-size:13px; font-weight:600; color:#7a5c00;">
-        <span>🔔 Enable notifications to get alerted when your forecast finishes</span>
-        <button onclick="_askNotificationPermission()"
-                style="background:#f5c842; color:#3E1A03; border:none; border-radius:8px;
-                       padding:6px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
-            Enable Notifications
-        </button>
-        <button onclick="document.getElementById('notifBanner').style.display='none'"
-                style="background:transparent; border:none; color:#aaa; font-size:18px;
-                       cursor:pointer; line-height:1; margin-left:auto;">✕</button>
-    </div>
-    <!-- Shown when permission = 'denied' (user previously blocked) -->
-    <div id="notifBannerDenied" style="display:none; align-items:center; gap:12px; flex-wrap:wrap;
-         background:#fff0f0; border:1.5px solid #f5a0a0; border-radius:12px;
-         padding:12px 18px; margin-bottom:14px; font-size:13px; font-weight:600; color:#8b0000;">
-        <span>🚫 Notifications are blocked — click the 🔒 lock icon in your address bar → set Notifications → Allow → refresh</span>
-        <button onclick="document.getElementById('notifBannerDenied').style.display='none'"
-                style="background:transparent; border:none; color:#aaa; font-size:18px;
-                       cursor:pointer; line-height:1; margin-left:auto;">✕</button>
-    </div>
+    <!-- notifications handled silently via browser Notification API -->
 
 
     <!-- ── RANGE SELECTOR ─────────────────────────── -->
@@ -180,55 +157,76 @@ function formatDateLabel(dateStr) {
 }
 
 
-// ── Browser notification when forecast finishes ──────────────
-let _prevStatus = null;
+// ── Forecast notification system (multilingual, cross-tab) ──
+// Uses browser Notification API so it pops up on ANY page/tab.
+// Only fires when user has switched away from this tab —
+// no point notifying if they're already watching the chart load.
 
-function _requestNotificationPermission() { /* no-op — handled by banner */ }
+const _notifStrings = {
+    title: {
+        'en':    '📈 Forecast Ready!',
+        'zh-CN': '📈 预测图表已就绪！',
+        'ms':    '📈 Graf Ramalan Sedia!',
+        'id':    '📈 Grafik Prakiraan Siap!',
+        'bn':    '📈 পূর্বাভাস গ্রাফ প্রস্তুত!',
+        'ne':    '📈 पूर्वानुमान ग्राफ तयार!',
+        'hi':    '📈 पूर्वानुमान ग्राफ तैयार!',
+        'my':    '📈 ခန့်မှန်းချက်ဂရပ် အဆင်သင့်!',
+        'fil':   '📈 Handa na ang Graph!',
+        'vi':    '📈 Biểu đồ dự báo sẵn sàng!',
+    },
+    body: {
+        'en':    'Your sales forecast chart is ready. Tap to view.',
+        'zh-CN': '您的销售预测图表已准备好，点击查看。',
+        'ms':    'Graf ramalan jualan anda sudah siap. Ketik untuk lihat.',
+        'id':    'Grafik prakiraan penjualan siap. Ketuk untuk melihat.',
+        'bn':    'আপনার বিক্রয় পূর্বাভাস চার্ট প্রস্তুত। দেখতে ক্লিক করুন।',
+        'ne':    'तपाईंको बिक्री पूर्वानुमान ग्राफ तयार छ। हेर्न क्लिक गर्नुहोस्।',
+        'hi':    'आपका बिक्री पूर्वानुमान ग्राफ तैयार है। देखने के लिए टैप करें।',
+        'my':    'သင်၏ရောင်းအားဂရပ် အဆင်သင့်ဖြစ်ပါပြီ။ ကြည့်ရှုရန် နှိပ်ပါ။',
+        'fil':   'Ang iyong forecast chart ay handa na. I-tap para tingnan.',
+        'vi':    'Biểu đồ dự báo doanh số của bạn đã sẵn sàng. Nhấn để xem.',
+    }
+};
 
-async function _askNotificationPermission() {
-    if (!('Notification' in window)) {
-        alert('Your browser does not support notifications.');
-        return;
-    }
-    // Must be called from a user click — this IS inside a click handler ✓
-    const result = await Notification.requestPermission();
-    _updateNotifBanner();   // refresh banner state after answer
-    if (result === 'granted') {
-        // Fire test notification immediately so user sees it works
-        new Notification('✅ Notifications enabled!', {
-            body: 'You will be notified when forecast finishes computing.',
-            icon: '/static/assets/icons/logo.ico'
-        });
-    } else if (result === 'denied') {
-        alert('Notifications blocked.\n\nTo fix this:\n1. Click the 🔒 lock icon in your browser address bar\n2. Set Notifications → Allow\n3. Refresh the page');
-    }
+function _getLang() {
+    return localStorage.getItem('selectedLang') || 'en';
 }
+
+function _requestNotificationPermission() { /* asked on first chart load below */ }
 
 function _notifyForecastDone() {
-    if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Forecast chart is ready! 📈', {
-            body: 'Your sales forecast graph is now ready to view.',
-            icon: '/static/assets/icons/logo.ico'
+    if (!('Notification' in window)) return;
+
+    const lang  = _getLang();
+    const title = _notifStrings.title[lang]  || _notifStrings.title['en'];
+    const body  = _notifStrings.body[lang]   || _notifStrings.body['en'];
+
+    if (Notification.permission === 'granted') {
+        // Only pop up if user has navigated away from this tab
+        if (document.hidden) {
+            const n = new Notification(title, {
+                body: body,
+                icon: '/static/assets/icons/logo.ico',
+                tag:  'forecast-ready',   // replaces previous notif if still showing
+            });
+            // Clicking notification brings user back to forecast page
+            n.onclick = () => { window.focus(); n.close(); };
+        }
+        // If user is still on this tab — chart is already visible, no notification needed
+
+    } else if (Notification.permission === 'default') {
+        // First time — ask permission (must be triggered by user gesture,
+        // so we queue it after the chart renders which counts as page interaction)
+        Notification.requestPermission().then(result => {
+            if (result === 'granted') {
+                // They just granted — fire it now so they know it works
+                const n = new Notification(title, { body, icon: '/static/assets/icons/logo.ico', tag: 'forecast-ready' });
+                n.onclick = () => { window.focus(); n.close(); };
+            }
         });
     }
-}
-
-// Update banner based on CURRENT permission state (called on load + after asking)
-function _updateNotifBanner() {
-    const banner = document.getElementById('notifBanner');
-    const denied = document.getElementById('notifBannerDenied');
-    if (!('Notification' in window)) return;
-    const perm = Notification.permission;
-    if (perm === 'granted') {
-        if (banner) banner.style.display = 'none';
-        if (denied) denied.style.display = 'none';
-    } else if (perm === 'denied') {
-        if (banner) banner.style.display = 'none';
-        if (denied) denied.style.display = 'flex';
-    } else {
-        if (banner) banner.style.display = 'flex';
-        if (denied) denied.style.display = 'none';
-    }
+    // permission === 'denied' → do nothing silently
 }
 
 function setRange(days) {
@@ -577,7 +575,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     const label = now.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', weekday:'long' });
     document.getElementById('todayLabel').textContent = `Today: ${label}`;
-    _updateNotifBanner();
     loadForecast();
 });
 </script>
