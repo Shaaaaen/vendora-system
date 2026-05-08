@@ -58,6 +58,13 @@ _forecast_running = {}   # user_id -> True while background thread active
 _forecast_lock    = threading.Lock()
 FORECAST_TTL_SECS = 3600   # re-run if older than 1 hour
 
+# ── Sale-recorded-while-computing flag ───────────────────────
+# If a sale is recorded while the forecast thread is running,
+# we can't stop the thread mid-way. Instead we flag it as dirty.
+# When the thread finishes it checks the flag — if dirty, it
+# immediately starts a fresh run with the new data instead of
+# saving the stale result.
+_forecast_dirty   = {}   # user_id -> True if new sale arrived during compute
 # ── Incremental model store ────────────────────────────────────
 # Keeps trained XGBoost model + last-seen row count per user.
 # On refit: if row count grew by <30%, warm-start from previous
@@ -511,9 +518,19 @@ def record_sale():
                         WHERE ingredient_id=%s AND user_id=%s
                     """, (recipe['quantity_used'] * qty, recipe['ingredient_id'], user_id))
         conn.commit()
-        # Invalidate forecast cache so next visit reflects new sales
+        # ── Invalidate cache + handle in-flight forecast ──────────
         with _forecast_lock:
             _forecast_cache.pop(user_id, None)
+            if _forecast_running.get(user_id, False):
+                # Thread is mid-run with OLD data — mark dirty so it
+                # discards its result and reruns once it finishes
+                _forecast_dirty[user_id] = True
+            else:
+                # No thread running — start a fresh one now with new sale included
+                _forecast_running[user_id] = True
+                t = threading.Thread(target=_background_forecast,
+                                     args=(user_id, 'MY'), daemon=True)
+                t.start()
         return jsonify({"status": "success"})
     except Exception as e:
         conn.rollback()
@@ -1283,16 +1300,29 @@ def _background_forecast(user_id, country_code='MY'):
     try:
         result = _run_forecast_engine(user_id, country_code)
         with _forecast_lock:
-            _forecast_cache[user_id] = {'result': result, 'computed_at': time.time()}
+            is_dirty = _forecast_dirty.pop(user_id, False)
+            if is_dirty:
+                # A new sale was recorded while we were computing — our result
+                # is stale. Don't save it. Kick off a fresh run immediately.
+                print(f"[Forecast] Result stale for user {user_id} (sale recorded mid-run) — rerunning")
+                _forecast_running[user_id] = True   # keep running flag set
+            else:
+                # Clean result — save to cache
+                _forecast_cache[user_id] = {'result': result, 'computed_at': time.time()}
+                _forecast_running.pop(user_id, None)
+
+        if is_dirty:
+            # Rerun outside the lock — this time data includes the new sale
+            _background_forecast(user_id, country_code)
+
     except Exception as e:
         print(f"Background forecast error for user {user_id}: {e}")
         with _forecast_lock:
+            _forecast_dirty.pop(user_id, None)
             _forecast_cache[user_id] = {
                 'result': {'status': 'error', 'message': str(e)},
                 'computed_at': time.time()
             }
-    finally:
-        with _forecast_lock:
             _forecast_running.pop(user_id, None)
 
 
