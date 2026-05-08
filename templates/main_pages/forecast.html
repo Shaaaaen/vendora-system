@@ -6,18 +6,28 @@
 <div class="forecast-content">
 
     <!-- ── NOTIFICATION PERMISSION BANNER ────────── -->
-    <div id="notifBanner" style="display:none; align-items:center; gap:12px;
+    <!-- Shown when permission = 'default' (not yet decided) -->
+    <div id="notifBanner" style="display:none; align-items:center; gap:12px; flex-wrap:wrap;
          background:#fffbe6; border:1.5px solid #f5c842; border-radius:12px;
          padding:12px 18px; margin-bottom:14px; font-size:13px; font-weight:600; color:#7a5c00;">
-        <span>🔔 Enable notifications to get alerted when your forecast is ready</span>
+        <span>🔔 Enable notifications to get alerted when your forecast finishes</span>
         <button onclick="_askNotificationPermission()"
                 style="background:#f5c842; color:#3E1A03; border:none; border-radius:8px;
-                       padding:6px 16px; font-size:12px; font-weight:700; cursor:pointer;">
-            Enable
+                       padding:6px 16px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;">
+            Enable Notifications
         </button>
         <button onclick="document.getElementById('notifBanner').style.display='none'"
-                style="background:transparent; border:none; color:#aaa; font-size:16px;
-                       cursor:pointer; line-height:1;">✕</button>
+                style="background:transparent; border:none; color:#aaa; font-size:18px;
+                       cursor:pointer; line-height:1; margin-left:auto;">✕</button>
+    </div>
+    <!-- Shown when permission = 'denied' (user previously blocked) -->
+    <div id="notifBannerDenied" style="display:none; align-items:center; gap:12px; flex-wrap:wrap;
+         background:#fff0f0; border:1.5px solid #f5a0a0; border-radius:12px;
+         padding:12px 18px; margin-bottom:14px; font-size:13px; font-weight:600; color:#8b0000;">
+        <span>🚫 Notifications are blocked — click the 🔒 lock icon in your address bar → set Notifications → Allow → refresh</span>
+        <button onclick="document.getElementById('notifBannerDenied').style.display='none'"
+                style="background:transparent; border:none; color:#aaa; font-size:18px;
+                       cursor:pointer; line-height:1; margin-left:auto;">✕</button>
     </div>
 
     <!-- ── RANGE SELECTOR ─────────────────────────── -->
@@ -170,27 +180,26 @@ function formatDateLabel(dateStr) {
 
 
 // ── Browser notification when forecast finishes ──────────────
-let _prevStatus       = null;
-let _notifBannerShown = false;   // show in-page banner if no permission
+let _prevStatus = null;
 
-// Browsers block Notification.requestPermission() unless called from
-// a real user click — calling it on page load silently does nothing.
-// So we ask when the user clicks the "Enable" banner instead.
-function _requestNotificationPermission() {
-    // No-op on load — permission is now requested via the in-page banner button
-}
+function _requestNotificationPermission() { /* no-op — handled by banner */ }
 
 async function _askNotificationPermission() {
-    if (!('Notification' in window)) return;
+    if (!('Notification' in window)) {
+        alert('Your browser does not support notifications.');
+        return;
+    }
+    // Must be called from a user click — this IS inside a click handler ✓
     const result = await Notification.requestPermission();
+    _updateNotifBanner();   // refresh banner state after answer
     if (result === 'granted') {
-        const banner = document.getElementById('notifBanner');
-        if (banner) banner.style.display = 'none';
-        // Fire a test notification so user knows it worked
-        new Notification('Notifications enabled! 🎯', {
-            body: 'You will be notified when the forecast finishes.',
+        // Fire test notification immediately so user sees it works
+        new Notification('✅ Notifications enabled!', {
+            body: 'You will be notified when forecast finishes computing.',
             icon: '/static/assets/icons/logo.ico'
         });
+    } else if (result === 'denied') {
+        alert('Notifications blocked.\n\nTo fix this:\n1. Click the 🔒 lock icon in your browser address bar\n2. Set Notifications → Allow\n3. Refresh the page');
     }
 }
 
@@ -203,13 +212,25 @@ function _notifyForecastDone() {
     }
 }
 
-// Show the enable-notifications banner if permission not yet granted
-function _maybeShowNotifBanner() {
+// Update banner based on CURRENT permission state (called on load + after asking)
+function _updateNotifBanner() {
+    const banner  = document.getElementById('notifBanner');
+    const denied  = document.getElementById('notifBannerDenied');
     if (!('Notification' in window)) return;
-    if (Notification.permission === 'default' && !_notifBannerShown) {
-        _notifBannerShown = true;
-        const banner = document.getElementById('notifBanner');
+
+    const perm = Notification.permission;
+    if (perm === 'granted') {
+        // Already allowed — hide both banners
+        if (banner) banner.style.display = 'none';
+        if (denied) denied.style.display = 'none';
+    } else if (perm === 'denied') {
+        // Blocked — show "how to unblock" message instead
+        if (banner) banner.style.display = 'none';
+        if (denied) denied.style.display = 'flex';
+    } else {
+        // 'default' — not decided yet, show enable banner
         if (banner) banner.style.display = 'flex';
+        if (denied) denied.style.display = 'none';
     }
 }
 
@@ -559,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     const label = now.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', weekday:'long' });
     document.getElementById('todayLabel').textContent = `Today: ${label}`;
-    _maybeShowNotifBanner();
+    _updateNotifBanner();
     loadForecast();
 });
 </script>
