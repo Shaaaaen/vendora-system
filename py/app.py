@@ -27,21 +27,11 @@ app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 CORS(app)
 
 app.secret_key = os.environ.get('SECRET_KEY', 'fallback_secret')
-
-# ── Session / cookie config ───────────────────────────────────
-# FIX: These three lines make Remember Me work on Railway (HTTPS).
-# Without SESSION_COOKIE_SECURE the browser silently drops the cookie
-# after a page reload on an HTTPS origin. Without SESSION_COOKIE_SAMESITE
-# the cross-site fetch from the login JS loses the session.
 app.config['PERMANENT_SESSION_LIFETIME']  = timedelta(days=30)
 app.config['SESSION_COOKIE_SECURE']       = True      # HTTPS only (Railway always HTTPS)
 app.config['SESSION_COOKIE_SAMESITE']     = 'Lax'     # required for normal navigation
 app.config['SESSION_COOKIE_HTTPONLY']     = True       # JS cannot read cookie (security)
 
-# ── Cloudinary (avatar storage) ───────────────────────────────
-# pip install cloudinary
-# Add CLOUDINARY_URL=cloudinary://api_key:api_secret@cloud_name to Railway env vars
-# OR set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET separately
 import cloudinary
 import cloudinary.uploader
 cloudinary.config(
@@ -52,7 +42,6 @@ cloudinary.config(
 )
 
 # ── Background forecast cache ─────────────────────────────────
-# FIX: Cache now stores all 3 horizons (3/7/12) in one entry.
 # Switching range tabs just slices the cached array — no refit.
 # { user_id: {'result': {...}, 'computed_at': float} }
 _forecast_cache   = {}
@@ -90,7 +79,8 @@ def get_db_connection():
             port=parsed.port or 3306,
             user=parsed.username,
             password=parsed.password,
-            database=parsed.path.lstrip('/')
+            database=parsed.path.lstrip('/'),
+            ssl_disabled=False
         )
     return mysql.connector.connect(
         host=os.environ.get('DB_HOST', 'localhost'),
