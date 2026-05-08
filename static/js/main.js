@@ -79,9 +79,9 @@ function goPage(page) {
   window.location.href = page;
 }
 
-// Profile click
+// Profile click — navigate to settings page
 function openProfile() {
-  alert("Profile clicked!");
+  window.location.href = "/settings";
 }
 
 // Language switch

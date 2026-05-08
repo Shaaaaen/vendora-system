@@ -5,6 +5,21 @@
 <div class="main-content">
 <div class="forecast-content">
 
+    <!-- ── NOTIFICATION PERMISSION BANNER ────────── -->
+    <div id="notifBanner" style="display:none; align-items:center; gap:12px;
+         background:#fffbe6; border:1.5px solid #f5c842; border-radius:12px;
+         padding:12px 18px; margin-bottom:14px; font-size:13px; font-weight:600; color:#7a5c00;">
+        <span>🔔 Enable notifications to get alerted when your forecast is ready</span>
+        <button onclick="_askNotificationPermission()"
+                style="background:#f5c842; color:#3E1A03; border:none; border-radius:8px;
+                       padding:6px 16px; font-size:12px; font-weight:700; cursor:pointer;">
+            Enable
+        </button>
+        <button onclick="document.getElementById('notifBanner').style.display='none'"
+                style="background:transparent; border:none; color:#aaa; font-size:16px;
+                       cursor:pointer; line-height:1;">✕</button>
+    </div>
+
     <!-- ── RANGE SELECTOR ─────────────────────────── -->
     <div class="forecast-range-card">
         <div class="forecast-range-title">Forecast Range</div>
@@ -155,11 +170,27 @@ function formatDateLabel(dateStr) {
 
 
 // ── Browser notification when forecast finishes ──────────────
-let _prevStatus = null;
+let _prevStatus       = null;
+let _notifBannerShown = false;   // show in-page banner if no permission
 
+// Browsers block Notification.requestPermission() unless called from
+// a real user click — calling it on page load silently does nothing.
+// So we ask when the user clicks the "Enable" banner instead.
 function _requestNotificationPermission() {
-    if ('Notification' in window && Notification.permission === 'default') {
-        Notification.requestPermission();
+    // No-op on load — permission is now requested via the in-page banner button
+}
+
+async function _askNotificationPermission() {
+    if (!('Notification' in window)) return;
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+        const banner = document.getElementById('notifBanner');
+        if (banner) banner.style.display = 'none';
+        // Fire a test notification so user knows it worked
+        new Notification('Notifications enabled! 🎯', {
+            body: 'You will be notified when the forecast finishes.',
+            icon: '/static/assets/icons/logo.ico'
+        });
     }
 }
 
@@ -169,6 +200,16 @@ function _notifyForecastDone() {
             body: 'Your sales forecast has been updated.',
             icon: '/static/assets/icons/logo.ico'
         });
+    }
+}
+
+// Show the enable-notifications banner if permission not yet granted
+function _maybeShowNotifBanner() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'default' && !_notifBannerShown) {
+        _notifBannerShown = true;
+        const banner = document.getElementById('notifBanner');
+        if (banner) banner.style.display = 'flex';
     }
 }
 
@@ -518,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     const label = now.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', weekday:'long' });
     document.getElementById('todayLabel').textContent = `Today: ${label}`;
-    _requestNotificationPermission();
+    _maybeShowNotifBanner();
     loadForecast();
 });
 </script>
