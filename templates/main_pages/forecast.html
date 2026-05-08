@@ -29,17 +29,7 @@
                 style="background:transparent; border:none; color:#aaa; font-size:18px;
                        cursor:pointer; line-height:1; margin-left:auto;">✕</button>
     </div>
-    <!-- Test button — only visible when permission already granted -->
-    <div id="notifTestBar" style="display:none; align-items:center; gap:12px;
-         background:#f0faf5; border:1.5px solid #7de0c4; border-radius:12px;
-         padding:10px 18px; margin-bottom:14px; font-size:13px; font-weight:600; color:#167358;">
-        <span>🔔 Notifications enabled</span>
-        <button onclick="_testNotification()"
-                style="background:#7de0c4; color:#167358; border:none; border-radius:8px;
-                       padding:5px 14px; font-size:12px; font-weight:700; cursor:pointer;">
-            Send test notification
-        </button>
-    </div>
+
 
     <!-- ── RANGE SELECTOR ─────────────────────────── -->
     <div class="forecast-range-card">
@@ -225,32 +215,20 @@ function _notifyForecastDone() {
 
 // Update banner based on CURRENT permission state (called on load + after asking)
 function _updateNotifBanner() {
-    const banner  = document.getElementById('notifBanner');
-    const denied  = document.getElementById('notifBannerDenied');
-    const testBar = document.getElementById('notifTestBar');
+    const banner = document.getElementById('notifBanner');
+    const denied = document.getElementById('notifBannerDenied');
     if (!('Notification' in window)) return;
-
     const perm = Notification.permission;
     if (perm === 'granted') {
-        if (banner)  banner.style.display  = 'none';
-        if (denied)  denied.style.display  = 'none';
-        if (testBar) testBar.style.display = 'flex';   // show test button
+        if (banner) banner.style.display = 'none';
+        if (denied) denied.style.display = 'none';
     } else if (perm === 'denied') {
-        if (banner)  banner.style.display  = 'none';
-        if (denied)  denied.style.display  = 'flex';
-        if (testBar) testBar.style.display = 'none';
+        if (banner) banner.style.display = 'none';
+        if (denied) denied.style.display = 'flex';
     } else {
-        if (banner)  banner.style.display  = 'flex';
-        if (denied)  denied.style.display  = 'none';
-        if (testBar) testBar.style.display = 'none';
+        if (banner) banner.style.display = 'flex';
+        if (denied) denied.style.display = 'none';
     }
-}
-
-function _testNotification() {
-    new Notification('Test notification 📈', {
-        body: 'Working! You will see this when your forecast chart is ready to view.',
-        icon: '/static/assets/icons/logo.ico'
-    });
 }
 
 function setRange(days) {
