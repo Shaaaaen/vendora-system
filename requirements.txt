@@ -12,3 +12,4 @@ xgboost
 holidays
 cloudinary
 gunicorn
+apscheduler

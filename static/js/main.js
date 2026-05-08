@@ -217,3 +217,81 @@ function cleanGoogleUI() {
 }
 
 setInterval(cleanGoogleUI, 300);
+
+
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL FORECAST NOTIFICATION POLLER
+// Runs on every page — polls server every 10s.
+// When forecast finishes (after new sale or midnight refresh),
+// fires OS notification no matter which page user is on.
+// ═══════════════════════════════════════════════════════════════
+const _globalNotifStrings = {
+    title: {
+        'en':    '📈 Forecast Ready!',
+        'zh-CN': '📈 预测图表已就绪！',
+        'ms':    '📈 Graf Ramalan Sedia!',
+        'id':    '📈 Grafik Prakiraan Siap!',
+        'bn':    '📈 পূর্বাভাস গ্রাফ প্রস্তুত!',
+        'ne':    '📈 पूर्वानुमान ग्राफ तयार!',
+        'hi':    '📈 पूर्वानुमान ग्राफ तैयार!',
+        'my':    '📈 ခန့်မှန်းချက်ဂရပ် အဆင်သင့်!',
+        'fil':   '📈 Handa na ang Graph!',
+        'vi':    '📈 Biểu đồ dự báo sẵn sàng!',
+    },
+    body: {
+        'en':    'Your sales forecast chart is ready. Tap to view.',
+        'zh-CN': '您的销售预测图表已准备好，点击查看。',
+        'ms':    'Graf ramalan jualan anda sudah siap. Ketik untuk lihat.',
+        'id':    'Grafik prakiraan penjualan siap. Ketuk untuk melihat.',
+        'bn':    'আপনার বিক্রয় পূর্বাভাস চার্ট প্রস্তুত। দেখতে ক্লিক করুন।',
+        'ne':    'तपाईंको बिक्री पूर्वानुमान ग्राफ तयार छ। हेर्न क्लिक गर्नुहोस्।',
+        'hi':    'आपका बिक्री पूर्वानुमान ग्राफ तैयार है। देखने के लिए टैप करें।',
+        'my':    'သင်၏ရောင်းအားဂရပ် အဆင်သင့်ဖြစ်ပါပြီ။ ကြည့်ရှုရန် နှိပ်ပါ။',
+        'fil':   'Ang iyong forecast chart ay handa na. I-tap para tingnan.',
+        'vi':    'Biểu đồ dự báo doanh số của bạn đã sẵn sàng. Nhấn để xem.',
+    }
+};
+
+function _fireGlobalForecastNotif() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    const lang  = localStorage.getItem('selectedLang') || 'en';
+    const title = _globalNotifStrings.title[lang] || _globalNotifStrings.title['en'];
+    const body  = _globalNotifStrings.body[lang]  || _globalNotifStrings.body['en'];
+    const n = new Notification(title, {
+        body: body,
+        icon: '/static/assets/icons/logo.ico',
+        tag:  'forecast-ready',
+    });
+    n.onclick = () => { window.location.href = '/forecast'; n.close(); };
+}
+
+async function _pollForecastStatus() {
+    // Only poll if user is logged in (page has a sidebar = logged in)
+    if (!document.querySelector('.sidebar, .nav-sidebar, [class*="sidebar"]')) return;
+    try {
+        const res  = await fetch('/api/forecast/status', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.notify) {
+            _fireGlobalForecastNotif();
+        }
+    } catch (e) { /* silently ignore network errors */ }
+}
+
+// Request notification permission once on first page load (requires user interaction
+// so we attach it to the first click anywhere on the page)
+function _requestNotifOnFirstClick() {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
+    document.addEventListener('click', async function _oneTimeAsk() {
+        document.removeEventListener('click', _oneTimeAsk);
+        await Notification.requestPermission();
+    }, { once: true });
+}
+
+// Start polling when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    _requestNotifOnFirstClick();
+    // Poll every 10 seconds
+    setInterval(_pollForecastStatus, 10000);
+});

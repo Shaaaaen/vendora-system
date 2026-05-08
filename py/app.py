@@ -3,6 +3,8 @@ import uuid
 import threading
 import time
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 import mysql.connector
@@ -56,7 +58,6 @@ cloudinary.config(
 _forecast_cache   = {}
 _forecast_running = {}   # user_id -> True while background thread active
 _forecast_lock    = threading.Lock()
-FORECAST_TTL_SECS = 3600   # re-run if older than 1 hour
 
 # ── Sale-recorded-while-computing flag ───────────────────────
 # If a sale is recorded while the forecast thread is running,
@@ -65,6 +66,8 @@ FORECAST_TTL_SECS = 3600   # re-run if older than 1 hour
 # immediately starts a fresh run with the new data instead of
 # saving the stale result.
 _forecast_dirty   = {}   # user_id -> True if new sale arrived during compute
+_forecast_notify  = {}   # user_id -> True when new result is ready for frontend to pick up
+FORECAST_TTL_SECS = 86400  # 24h — midnight scheduler keeps cache fresh; no need to expire hourly
 # ── Incremental model store ────────────────────────────────────
 # Keeps trained XGBoost model + last-seen row count per user.
 # On refit: if row count grew by <30%, warm-start from previous
@@ -1307,8 +1310,9 @@ def _background_forecast(user_id, country_code='MY'):
                 print(f"[Forecast] Result stale for user {user_id} (sale recorded mid-run) — rerunning")
                 _forecast_running[user_id] = True   # keep running flag set
             else:
-                # Clean result — save to cache
+                # Clean result — save to cache + flag frontend to show notification
                 _forecast_cache[user_id] = {'result': result, 'computed_at': time.time()}
+                _forecast_notify[user_id] = True   # frontend polls this via /api/forecast/status
                 _forecast_running.pop(user_id, None)
 
         if is_dirty:
@@ -1371,6 +1375,20 @@ def api_forecast():
     t.start()
     return jsonify({'status': 'computing',
                     'message': 'Forecast started, computing in background…'})
+
+
+@app.route('/api/forecast/status')
+def api_forecast_status():
+    """Lightweight poll endpoint — returns whether a fresh forecast is ready.
+    Frontend polls this every 10s from ANY page. When notify=True, frontend
+    fires the OS notification and clears the flag."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'notify': False}), 401
+    with _forecast_lock:
+        notify  = _forecast_notify.pop(user_id, False)   # consume flag — one-shot
+        running = _forecast_running.get(user_id, False)
+    return jsonify({'notify': notify, 'running': running})
 
 
 @app.route('/api/forecast/refresh', methods=['POST'])
@@ -1530,6 +1548,51 @@ def reset_update_password():
 def logout():
     session.clear()
     return redirect(url_for('login_page'))
+
+# ─────────────────────────────────────────────────────────────
+# MIDNIGHT SCHEDULER — pre-computes forecast for all active users
+# Runs at 00:00 Malaysia time every night so graph is instant
+# when users open the page in the morning.
+# ─────────────────────────────────────────────────────────────
+def _scheduled_midnight_refresh():
+    """Called at midnight — silently refreshes forecast for all users
+    who had sales activity in the last 60 days."""
+    print("[Scheduler] Midnight forecast refresh started")
+    try:
+        conn   = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT DISTINCT user_id FROM sale
+            WHERE sale_date >= DATE_SUB(CURDATE(), INTERVAL 60 DAY)
+        """)
+        active_users = [r['user_id'] for r in cursor.fetchall()]
+        cursor.close(); conn.close()
+    except Exception as e:
+        print(f"[Scheduler] DB error: {e}")
+        return
+
+    print(f"[Scheduler] Refreshing forecast for {len(active_users)} active users")
+    for uid in active_users:
+        with _forecast_lock:
+            already = _forecast_running.get(uid, False)
+        if not already:
+            with _forecast_lock:
+                _forecast_running[uid] = True
+            t = threading.Thread(target=_background_forecast,
+                                 args=(uid, 'MY'), daemon=True)
+            t.start()
+
+# Start scheduler (only once — guard against Flask debug reloader double-start)
+if not os.environ.get('WERKZEUG_RUN_MAIN'):
+    _scheduler = BackgroundScheduler(timezone="Asia/Kuala_Lumpur")
+    _scheduler.add_job(
+        _scheduled_midnight_refresh,
+        CronTrigger(hour=0, minute=0),   # 12:00 AM Malaysia time
+        id='midnight_forecast',
+        replace_existing=True
+    )
+    _scheduler.start()
+    print("[Scheduler] Midnight forecast scheduler started (Asia/Kuala_Lumpur 00:00)")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
