@@ -355,13 +355,14 @@ h2 {
   color: #4B1D00;
 }
 
-input {
+/* Scoped to info-card forms only — was causing global override issues */
+.info-card input, .info-card2 input {
   width: 100%;
   padding: 8px;
   margin-top: 5px;
 }
 
-button {
+.info-card > button, .info-card2 > button {
   width: 100%;
   padding: 10px;
   margin-top: 20px;

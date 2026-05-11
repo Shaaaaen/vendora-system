@@ -6,6 +6,16 @@
   <link rel="icon" href="{{ url_for('static', filename='assets/icons/logo.png') }}" type="image/png">
   <title>Vendora</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    .pw-wrap { position: relative; }
+    .pw-wrap input { width: 100%; box-sizing: border-box; padding-right: 44px; }
+    .pw-toggle {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: #999;
+      font-size: 16px; line-height: 1; padding: 0;
+      width: auto; margin-top: 0;
+    }
+  </style>
 </head>
 <body class="login-body">
 
@@ -39,8 +49,9 @@
 
     <!-- Password -->
     <label data-lang="passwordLabel"><span class="icon">🔒</span> Password</label>
-    <div class="input-group">
+    <div class="input-group pw-wrap">
       <input type="password" id="passwordInput" data-lang-placeholder="password" placeholder="Enter your password here...">
+      <button class="pw-toggle" onclick="togglePw('passwordInput', this)">👁</button>
     </div>
 
     <!-- Forgot password -->
@@ -66,7 +77,13 @@
 
   </div>
 
-  <!-- Scripts -->
+  <script>
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      inp.type = inp.type === "password" ? "text" : "password";
+      btn.textContent = inp.type === "password" ? "👁" : "🙈";
+    }
+  </script>
   <script src="{{ url_for('static', filename='js/login.js') }}"></script>
   <script src="{{ url_for('static', filename='js/bg.js') }}"></script>
 </body>

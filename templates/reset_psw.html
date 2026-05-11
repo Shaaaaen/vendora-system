@@ -60,13 +60,15 @@
       width: 100%; padding: 12px 15px; border-radius: 25px;
       border: 1.5px solid #e0c99a; outline: none; font-size: 14px;
       background: #fff; color: #4a2c00; transition: border-color 0.2s;
+      box-sizing: border-box;
     }
     .reset-input:focus { border-color: #4a2c00; }
-    .reset-input.input-pw { padding-right: 44px; }
-    .input-wrap { position: relative; }
+    .reset-input.input-pw { padding-right: 44px; box-sizing: border-box; }
+    .input-wrap { position: relative; width: 100%; }
     .toggle-pw {
       position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
       background: none; border: none; cursor: pointer; color: #999; font-size: 16px;
+      line-height: 1; padding: 0; width: auto; margin-top: 0;
     }
     .security-key-box { text-align: center; margin: 20px 0; }
     .security-key-value {
@@ -98,6 +100,7 @@
     .question-box {
       background: #fffbf2; border: 1.5px solid #e0c99a; border-radius: 12px;
       padding: 12px 16px; text-align: center; font-size: 14px; font-weight: 600; color: #4a2c00;
+      margin-bottom: 8px;
     }
   </style>
 </head>
@@ -110,6 +113,12 @@
       <option value="zh">中文</option>
       <option value="ms">Bahasa Melayu</option>
       <option value="id">Indonesia</option>
+      <option value="bn">বাংলা</option>
+      <option value="ne">नेपाली</option>
+      <option value="hi">हिन्दी</option>
+      <option value="my">မြန်မာ</option>
+      <option value="ph">Filipino</option>
+      <option value="vi">Tiếng Việt</option>
     </select>
   </div>
 
@@ -203,8 +212,10 @@
   <script src="{{ url_for('static', filename='js/bg.js') }}"></script>
   <script>
     let currentStep = 1;
+    let currentLang = "en";
 
-    const T = {
+    // Exact same translations object as login.js / signup.js pattern
+    const translations = {
       en: {
         title:"Reset Password",
         s1title:"Please Enter Your Email.", s1sub:"Make sure this is the email you registered before.",
@@ -284,33 +295,155 @@
         errAnswerEmpty:"Masukkan jawaban Anda.", errAnswerWrong:"Jawaban salah. Coba lagi.",
         errPwEmpty:"Masukkan kata sandi baru.", errPwShort:"Kata sandi minimal 6 karakter.",
         errPwMatch:"Kata sandi tidak cocok.", errGeneric:"Terjadi kesalahan. Coba lagi."
+      },
+      bn: {
+        title:"পাসওয়ার্ড রিসেট",
+        s1title:"আপনার ইমেইল দিন।", s1sub:"নিশ্চিত করুন এটি আপনার নিবন্ধিত ইমেইল।",
+        s1btn:"চালিয়ে যান", emailPh:"এখানে লিখুন...",
+        s2title:"এটি কি আপনার সিকিউরিটি কী?", s2sub:"দয়া করে দেখুন এটি আপনার সিকিউরিটি কী কিনা।",
+        s2yes:"হ্যাঁ, এটি আমার কী", s2no:"না, এটি আমার কী নয়",
+        s3title:"নিরাপত্তা প্রশ্ন", s3sub:"যাচাইয়ের জন্য আপনার নিরাপত্তা প্রশ্নের উত্তর দিন।",
+        s3answerLabel:"আপনার উত্তর", answerPh:"এখানে উত্তর লিখুন...", s3btn:"পরবর্তী",
+        s4title:"নতুন পাসওয়ার্ড সেট করুন", s4sub:"আগেরটির থেকে আলাদা নতুন পাসওয়ার্ড তৈরি করুন।",
+        s4newLabel:"🔒 নতুন পাসওয়ার্ড", newPwPh:"নতুন পাসওয়ার্ড লিখুন...",
+        s4confirmLabel:"🔒 পাসওয়ার্ড নিশ্চিত করুন", confirmPwPh:"পাসওয়ার্ড আবার লিখুন...",
+        s4btn:"পাসওয়ার্ড আপডেট করুন",
+        s5title:"সফল", s5sub:"অভিনন্দন! আপনার পাসওয়ার্ড পরিবর্তিত হয়েছে।<br>লগইন পেজে যেতে চালিয়ে যান।",
+        s5btn:"চালিয়ে যান",
+        errEmailEmpty:"ইমেইল দিন।", errEmailNotFound:"এই ইমেইলের জন্য কোনো অ্যাকাউন্ট পাওয়া যায়নি।",
+        errKeyNo:"সিকিউরিটি কী মেলেনি। শুরু থেকে আবার চেষ্টা করুন।",
+        errAnswerEmpty:"উত্তর দিন।", errAnswerWrong:"ভুল উত্তর। আবার চেষ্টা করুন।",
+        errPwEmpty:"নতুন পাসওয়ার্ড দিন।", errPwShort:"পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।",
+        errPwMatch:"পাসওয়ার্ড মেলেনি।", errGeneric:"কিছু ভুল হয়েছে। আবার চেষ্টা করুন।"
+      },
+      ne: {
+        title:"पासवर्ड रिसेट गर्नुहोस्",
+        s1title:"कृपया आफ्नो इमेल प्रविष्ट गर्नुहोस्।", s1sub:"यो तपाईंले दर्ता गर्दा प्रयोग गरेको इमेल हो भन्ने सुनिश्चित गर्नुहोस्।",
+        s1btn:"जारी राख्नुहोस्", emailPh:"यहाँ टाइप गर्नुहोस्...",
+        s2title:"के यो तपाईंको सुरक्षा कुञ्जी हो?", s2sub:"कृपया यो तपाईंको सुरक्षा कुञ्जी हो कि होइन जाँच गर्नुहोस्।",
+        s2yes:"हो, यो मेरो कुञ्जी हो", s2no:"होइन, यो मेरो कुञ्जी होइन",
+        s3title:"सुरक्षा प्रश्न", s3sub:"प्रमाणिकरणका लागि आफ्नो सुरक्षा प्रश्नको उत्तर दिनुहोस्।",
+        s3answerLabel:"तपाईंको उत्तर", answerPh:"यहाँ उत्तर लेख्नुहोस्...", s3btn:"अर्को",
+        s4title:"नयाँ पासवर्ड सेट गर्नुहोस्", s4sub:"अघिल्लोभन्दा फरक नयाँ पासवर्ड बनाउनुहोस्।",
+        s4newLabel:"🔒 नयाँ पासवर्ड", newPwPh:"नयाँ पासवर्ड प्रविष्ट गर्नुहोस्...",
+        s4confirmLabel:"🔒 पासवर्ड पुष्टि गर्नुहोस्", confirmPwPh:"नयाँ पासवर्ड पुन: प्रविष्ट गर्नुहोस्...",
+        s4btn:"पासवर्ड अपडेट गर्नुहोस्",
+        s5title:"सफल भयो", s5sub:"बधाई छ! तपाईंको पासवर्ड परिवर्तन भएको छ।<br>लगइन पृष्ठमा जान जारी राख्नुहोस् क्लिक गर्नुहोस्।",
+        s5btn:"जारी राख्नुहोस्",
+        errEmailEmpty:"कृपया आफ्नो इमेल प्रविष्ट गर्नुहोस्।", errEmailNotFound:"यो इमेलको लागि कुनै खाता फेला परेन।",
+        errKeyNo:"सुरक्षा कुञ्जी मिलेन। कृपया सुरुबाट पुन: प्रयास गर्नुहोस्।",
+        errAnswerEmpty:"कृपया आफ्नो उत्तर प्रविष्ट गर्नुहोस्।", errAnswerWrong:"गलत उत्तर। कृपया पुन: प्रयास गर्नुहोस्।",
+        errPwEmpty:"कृपया नयाँ पासवर्ड प्रविष्ट गर्नुहोस्।", errPwShort:"पासवर्ड कम्तिमा 6 वर्ण हुनुपर्छ।",
+        errPwMatch:"पासवर्डहरू मेल खाँदैनन्।", errGeneric:"केही गलत भयो। कृपया पुन: प्रयास गर्नुहोस्।"
+      },
+      hi: {
+        title:"पासवर्ड रीसेट करें",
+        s1title:"कृपया अपना ईमेल दर्ज करें।", s1sub:"सुनिश्चित करें कि यह वही ईमेल है जिससे आपने पंजीकरण किया था।",
+        s1btn:"जारी रखें", emailPh:"यहाँ टाइप करें...",
+        s2title:"क्या यह आपकी सुरक्षा कुंजी है?", s2sub:"कृपया जाँचें कि यह आपकी सुरक्षा कुंजी है या नहीं।",
+        s2yes:"हाँ, यह मेरी कुंजी है", s2no:"नहीं, यह मेरी कुंजी नहीं है",
+        s3title:"सुरक्षा प्रश्न", s3sub:"सत्यापन के लिए अपने सुरक्षा प्रश्न का उत्तर दें।",
+        s3answerLabel:"आपका उत्तर", answerPh:"यहाँ उत्तर दर्ज करें...", s3btn:"अगला",
+        s4title:"नया पासवर्ड सेट करें", s4sub:"एक नया पासवर्ड बनाएं जो पहले से अलग हो।",
+        s4newLabel:"🔒 नया पासवर्ड", newPwPh:"नया पासवर्ड दर्ज करें...",
+        s4confirmLabel:"🔒 पासवर्ड की पुष्टि करें", confirmPwPh:"नया पासवर्ड फिर से दर्ज करें...",
+        s4btn:"पासवर्ड अपडेट करें",
+        s5title:"सफल", s5sub:"बधाई हो! आपका पासवर्ड बदल दिया गया है।<br>लॉगिन पृष्ठ पर जाने के लिए जारी रखें पर क्लिक करें।",
+        s5btn:"जारी रखें",
+        errEmailEmpty:"कृपया अपना ईमेल दर्ज करें।", errEmailNotFound:"इस ईमेल के लिए कोई खाता नहीं मिला।",
+        errKeyNo:"सुरक्षा कुंजी नहीं मिली। कृपया शुरू से पुनः प्रयास करें।",
+        errAnswerEmpty:"कृपया अपना उत्तर दर्ज करें।", errAnswerWrong:"गलत उत्तर। कृपया पुनः प्रयास करें।",
+        errPwEmpty:"कृपया नया पासवर्ड दर्ज करें।", errPwShort:"पासवर्ड कम से कम 6 अक्षरों का होना चाहिए।",
+        errPwMatch:"पासवर्ड मेल नहीं खाते।", errGeneric:"कुछ गलत हो गया। कृपया पुनः प्रयास करें।"
+      },
+      my: {
+        title:"စကားဝှက်ပြန်လည်သတ်မှတ်ရန်",
+        s1title:"သင်၏အီးမေးလ်ကိုထည့်သွင်းပါ။", s1sub:"ဤသည်သင်မှတ်ပုံတင်ရာတွင်အသုံးပြုသောအီးမေးလ်ဖြစ်ကြောင်းသေချာပါစေ။",
+        s1btn:"ဆက်လက်လုပ်ဆောင်ရန်", emailPh:"ဤနေရာတွင်ရိုက်ထည့်ပါ...",
+        s2title:"ဒါသင်၏လုံခြုံရေးသော့ဖြစ်သလား?", s2sub:"ဒါသင်၏လုံခြုံရေးသော့ဖြစ်မဖြစ်စစ်ဆေးပါ။",
+        s2yes:"ဟုတ်သည်၊ ဒါကျွန်ုပ်၏သော့ဖြစ်သည်", s2no:"မဟုတ်ပါ၊ ဒါကျွန်ုပ်၏သော့မဟုတ်ပါ",
+        s3title:"လုံခြုံရေးမေးခွန်း", s3sub:"အတည်ပြုရန်သင်၏လုံခြုံရေးမေးခွန်းအတွက်အဖြေပေးပါ။",
+        s3answerLabel:"သင်၏အဖြေ", answerPh:"ဤနေရာတွင်အဖြေထည့်ပါ...", s3btn:"နောက်တစ်ဆင့်",
+        s4title:"စကားဝှက်အသစ်သတ်မှတ်ပါ", s4sub:"ယခင်နှင့်မတူသောစကားဝှက်အသစ်တစ်ခုဖန်တီးပါ။",
+        s4newLabel:"🔒 စကားဝှက်အသစ်", newPwPh:"စကားဝှက်အသစ်ထည့်သွင်းပါ...",
+        s4confirmLabel:"🔒 စကားဝှက်အတည်ပြုပါ", confirmPwPh:"စကားဝှက်အသစ်ကိုပြန်ထည့်ပါ...",
+        s4btn:"စကားဝှက်အပ်ဒိတ်လုပ်ပါ",
+        s5title:"အောင်မြင်သည်", s5sub:"ဂုဏ်ယူပါသည်! သင်၏စကားဝှက်ပြောင်းလဲပြီးပါပြီ။<br>လော့ဂ်အင်စာမျက်နှာသို့ဆက်လက်သွားရန်နှိပ်ပါ။",
+        s5btn:"ဆက်လက်လုပ်ဆောင်ရန်",
+        errEmailEmpty:"သင်၏အီးမေးလ်ထည့်သွင်းပါ။", errEmailNotFound:"ဤအီးမေးလ်အတွက်အကောင့်မတွေ့ပါ။",
+        errKeyNo:"လုံခြုံရေးသော့မမှန်ကန်ပါ။ အစမှပြန်စပါ။",
+        errAnswerEmpty:"သင်၏အဖြေထည့်သွင်းပါ။", errAnswerWrong:"အဖြေမှားသည်။ ပြန်လည်ကြိုးစားပါ။",
+        errPwEmpty:"စကားဝှက်အသစ်ထည့်သွင်းပါ။", errPwShort:"စကားဝှက်အနည်းဆုံး၆လုံးဖြစ်ရမည်။",
+        errPwMatch:"စကားဝှက်များမကိုက်ညီပါ။", errGeneric:"တစ်ခုခုမှားယွင်းသည်။ ပြန်လည်ကြိုးစားပါ။"
+      },
+      ph: {
+        title:"I-reset ang Password",
+        s1title:"Ilagay ang iyong Email.", s1sub:"Siguraduhing ito ang email na ginamit mo sa pagpaparehistro.",
+        s1btn:"Magpatuloy", emailPh:"Mag-type dito...",
+        s2title:"Ito ba ang iyong Security Key?", s2sub:"Pakisuri kung ito ang iyong security key.",
+        s2yes:"Oo, ito ang aking key", s2no:"Hindi, hindi ito ang aking key",
+        s3title:"Tanong sa Seguridad", s3sub:"Ibigay ang sagot sa iyong tanong sa seguridad para sa beripikasyon.",
+        s3answerLabel:"Ang Iyong Sagot", answerPh:"Ilagay ang sagot dito...", s3btn:"Susunod",
+        s4title:"Magtakda ng bagong password", s4sub:"Lumikha ng bagong password na naiiba sa nakaraan.",
+        s4newLabel:"🔒 Bagong Password", newPwPh:"Ilagay ang bagong password...",
+        s4confirmLabel:"🔒 Kumpirmahin ang Password", confirmPwPh:"Ilagay muli ang bagong password...",
+        s4btn:"I-update ang Password",
+        s5title:"Matagumpay", s5sub:"Binabati kita! Nabago na ang iyong password.<br>I-click ang ituloy para pumunta sa pahina ng pag-login.",
+        s5btn:"Magpatuloy",
+        errEmailEmpty:"Ilagay ang iyong email.", errEmailNotFound:"Walang account para sa email na ito.",
+        errKeyNo:"Hindi nakilala ang security key. Magsimula muli.",
+        errAnswerEmpty:"Ilagay ang iyong sagot.", errAnswerWrong:"Maling sagot. Subukan muli.",
+        errPwEmpty:"Ilagay ang bagong password.", errPwShort:"Ang password ay dapat hindi bababa sa 6 na character.",
+        errPwMatch:"Hindi magkatugma ang mga password.", errGeneric:"May nangyaring mali. Subukan muli."
+      },
+      vi: {
+        title:"Đặt lại mật khẩu",
+        s1title:"Vui lòng nhập Email của bạn.", s1sub:"Đảm bảo đây là email bạn đã đăng ký.",
+        s1btn:"Tiếp tục", emailPh:"Nhập vào đây...",
+        s2title:"Đây có phải khóa bảo mật của bạn không?", s2sub:"Vui lòng kiểm tra xem đây có phải khóa bảo mật của bạn không.",
+        s2yes:"Có, đây là khóa của tôi", s2no:"Không, đây không phải khóa của tôi",
+        s3title:"Câu hỏi bảo mật", s3sub:"Vui lòng cung cấp câu trả lời cho câu hỏi bảo mật của bạn.",
+        s3answerLabel:"Câu trả lời của bạn", answerPh:"Nhập câu trả lời vào đây...", s3btn:"Tiếp theo",
+        s4title:"Đặt mật khẩu mới", s4sub:"Tạo mật khẩu mới khác với mật khẩu trước.",
+        s4newLabel:"🔒 Mật khẩu mới", newPwPh:"Nhập mật khẩu mới...",
+        s4confirmLabel:"🔒 Xác nhận mật khẩu", confirmPwPh:"Nhập lại mật khẩu mới...",
+        s4btn:"Cập nhật mật khẩu",
+        s5title:"Thành công", s5sub:"Chúc mừng! Mật khẩu của bạn đã được thay đổi.<br>Nhấp tiếp tục để đến trang đăng nhập.",
+        s5btn:"Tiếp tục",
+        errEmailEmpty:"Vui lòng nhập email.", errEmailNotFound:"Không tìm thấy tài khoản cho email này.",
+        errKeyNo:"Không nhận ra khóa bảo mật. Vui lòng thử lại từ đầu.",
+        errAnswerEmpty:"Vui lòng nhập câu trả lời.", errAnswerWrong:"Câu trả lời không đúng. Thử lại.",
+        errPwEmpty:"Vui lòng nhập mật khẩu mới.", errPwShort:"Mật khẩu phải có ít nhất 6 ký tự.",
+        errPwMatch:"Mật khẩu không khớp.", errGeneric:"Đã xảy ra lỗi. Vui lòng thử lại."
       }
     };
 
-    let lang = "en";
-    function changeLanguage(l) { lang = l; applyLang(); }
-    function t(k) { return (T[lang]||T.en)[k]||""; }
-
-    function applyLang() {
-      const ids = ["titleText","s1title","s1sub","s1btn","s2title","s2sub","s2yes","s2no",
-                   "s3title","s3sub","s3answerLabel","s3btn","s4title","s4sub",
-                   "s4newLabel","s4confirmLabel","s4btn","s5title","s5btn"];
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const ids  = ["titleText","s1title","s1sub","s1btn","s2title","s2sub","s2yes","s2no",
+                    "s3title","s3sub","s3answerLabel","s3btn","s4title","s4sub",
+                    "s4newLabel","s4confirmLabel","s4btn","s5title","s5btn"];
       const keys = ["title","s1title","s1sub","s1btn","s2title","s2sub","s2yes","s2no",
                     "s3title","s3sub","s3answerLabel","s3btn","s4title","s4sub",
                     "s4newLabel","s4confirmLabel","s4btn","s5title","s5btn"];
-      ids.forEach((id,i) => { const el=document.getElementById(id); if(el) el.textContent=t(keys[i]); });
-      document.getElementById("emailInput").placeholder = t("emailPh");
-      document.getElementById("answerInput").placeholder = t("answerPh");
-      document.getElementById("newPwInput").placeholder = t("newPwPh");
-      document.getElementById("confirmPwInput").placeholder = t("confirmPwPh");
-      document.getElementById("s5sub").innerHTML = t("s5sub");
+      ids.forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = translations[lang][keys[i]];
+      });
+      document.getElementById("emailInput").placeholder    = translations[lang].emailPh;
+      document.getElementById("answerInput").placeholder   = translations[lang].answerPh;
+      document.getElementById("newPwInput").placeholder    = translations[lang].newPwPh;
+      document.getElementById("confirmPwInput").placeholder = translations[lang].confirmPwPh;
+      document.getElementById("s5sub").innerHTML = translations[lang].s5sub;
     }
+
+    function t(k) { return (translations[currentLang] || translations.en)[k] || ""; }
 
     function showStep(n) {
       document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
-      document.getElementById("step"+n).classList.add("active");
+      document.getElementById("step" + n).classList.add("active");
       currentStep = n;
-      document.getElementById("backBtn").style.display = n===5 ? "none" : "flex";
+      document.getElementById("backBtn").style.display = n === 5 ? "none" : "flex";
     }
 
     function goBack() {
@@ -331,33 +464,37 @@
       if (!email) { showError("s1error", t("errEmailEmpty")); return; }
       const btn = document.getElementById("s1btn"); btn.disabled = true;
       fetch("/api/reset/verify_email", {
-        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
-        body: JSON.stringify({email})
-      }).then(r=>r.json()).then(d => {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ email })
+      }).then(r => r.json()).then(d => {
         btn.disabled = false;
-        if (d.status==="success") { document.getElementById("securityKeyDisplay").textContent=d.security_key; showStep(2); }
-        else showError("s1error", t("errEmailNotFound"));
-      }).catch(()=>{ btn.disabled=false; showError("s1error",t("errGeneric")); });
+        if (d.status === "success") {
+          document.getElementById("securityKeyDisplay").textContent = d.security_key;
+          showStep(2);
+        } else {
+          showError("s1error", t("errEmailNotFound"));
+        }
+      }).catch(() => { btn.disabled = false; showError("s1error", t("errGeneric")); });
     }
 
     // Step 2
     function confirmKey(yes) {
       clearError("s2error");
       fetch("/api/reset/verify_security_key", {
-        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
-        body: JSON.stringify({confirmed: yes})
-      }).then(r=>r.json()).then(d => {
-        if (d.status==="success") {
-          fetch("/api/reset/get_security_question", {credentials:"include"})
-          .then(r=>r.json()).then(q => {
-            document.getElementById("questionDisplay").textContent = q.security_question||"";
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ confirmed: yes })
+      }).then(r => r.json()).then(d => {
+        if (d.status === "success") {
+          fetch("/api/reset/get_security_question", { credentials: "include" })
+          .then(r => r.json()).then(q => {
+            document.getElementById("questionDisplay").textContent = q.security_question || "";
             showStep(3);
           });
         } else {
           showError("s2error", t("errKeyNo"));
-          setTimeout(()=>window.location.href="/reset_password", 2500);
+          setTimeout(() => window.location.href = "/reset_password", 2500);
         }
-      }).catch(()=>showError("s2error",t("errGeneric")));
+      }).catch(() => showError("s2error", t("errGeneric")));
     }
 
     // Step 3
@@ -367,43 +504,43 @@
       if (!answer) { showError("s3error", t("errAnswerEmpty")); return; }
       const btn = document.getElementById("s3btn"); btn.disabled = true;
       fetch("/api/reset/verify_security_answer", {
-        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
-        body: JSON.stringify({answer})
-      }).then(r=>r.json()).then(d => {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ answer })
+      }).then(r => r.json()).then(d => {
         btn.disabled = false;
-        if (d.status==="success") showStep(4);
+        if (d.status === "success") showStep(4);
         else showError("s3error", t("errAnswerWrong"));
-      }).catch(()=>{ btn.disabled=false; showError("s3error",t("errGeneric")); });
+      }).catch(() => { btn.disabled = false; showError("s3error", t("errGeneric")); });
     }
 
     // Step 4
     function submitNewPassword() {
       clearError("s4error");
-      const pw = document.getElementById("newPwInput").value;
+      const pw      = document.getElementById("newPwInput").value;
       const confirm = document.getElementById("confirmPwInput").value;
-      if (!pw) { showError("s4error", t("errPwEmpty")); return; }
-      if (pw.length < 6) { showError("s4error", t("errPwShort")); return; }
+      if (!pw)            { showError("s4error", t("errPwEmpty")); return; }
+      if (pw.length < 6)  { showError("s4error", t("errPwShort")); return; }
       if (pw !== confirm) { showError("s4error", t("errPwMatch")); return; }
       const btn = document.getElementById("s4btn"); btn.disabled = true;
       fetch("/api/reset/update_password", {
-        method:"POST", headers:{"Content-Type":"application/json"}, credentials:"include",
-        body: JSON.stringify({password: pw})
-      }).then(r=>r.json()).then(d => {
+        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
+        body: JSON.stringify({ password: pw })
+      }).then(r => r.json()).then(d => {
         btn.disabled = false;
-        if (d.status==="success") showStep(5);
+        if (d.status === "success") showStep(5);
         else showError("s4error", t("errGeneric"));
-      }).catch(()=>{ btn.disabled=false; showError("s4error",t("errGeneric")); });
+      }).catch(() => { btn.disabled = false; showError("s4error", t("errGeneric")); });
     }
 
     function togglePw(id, btn) {
       const inp = document.getElementById(id);
-      inp.type = inp.type==="password" ? "text" : "password";
-      btn.textContent = inp.type==="password" ? "👁" : "🙈";
+      inp.type = inp.type === "password" ? "text" : "password";
+      btn.textContent = inp.type === "password" ? "👁" : "🙈";
     }
 
-    document.getElementById("emailInput").addEventListener("keydown", e=>{ if(e.key==="Enter") submitEmail(); });
-    document.getElementById("answerInput").addEventListener("keydown", e=>{ if(e.key==="Enter") submitAnswer(); });
-    document.getElementById("confirmPwInput").addEventListener("keydown", e=>{ if(e.key==="Enter") submitNewPassword(); });
+    document.getElementById("emailInput").addEventListener("keydown",     e => { if (e.key === "Enter") submitEmail(); });
+    document.getElementById("answerInput").addEventListener("keydown",    e => { if (e.key === "Enter") submitAnswer(); });
+    document.getElementById("confirmPwInput").addEventListener("keydown", e => { if (e.key === "Enter") submitNewPassword(); });
   </script>
 </body>
 </html>

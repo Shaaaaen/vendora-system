@@ -6,6 +6,16 @@
   <title>Vendora</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    .pw-toggle {
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: #999;
+      font-size: 16px; line-height: 1; padding: 0;
+      width: auto; margin-top: 0; z-index: 2;
+    }
+    .password-group { position: relative; }
+    .password-group input { padding-right: 44px; box-sizing: border-box; }
+  </style>
 </head>
 
 <body class="signup-body">
@@ -58,12 +68,12 @@
             <div class="input-group password-group">
                 <i class="fa-solid fa-lock"></i>
                 <input type="password" id="password" data-lang-placeholder="password" placeholder="Password">
-                <!-- <span class="toggle-password" onclick="togglePassword('password', this)">👁️</span> -->
+                <button class="pw-toggle" onclick="togglePw('password', this)">👁</button>
             </div>
             <div class="input-group password-group">
                 <i class="fa-solid fa-lock"></i>
                 <input type="password" id="confirmPassword" data-lang-placeholder="confirm" placeholder="Confirm Password">
-                <!-- <span class="toggle-password" onclick="togglePassword('confirmPassword', this)">👁️</span> -->
+                <button class="pw-toggle" onclick="togglePw('confirmPassword', this)">👁</button>
             </div>
             <button onclick="goToSecurity()" data-lang="next">Next</button>
             <p class="login-text">
@@ -79,6 +89,13 @@
   </div>
 </div>
 
+<script>
+  function togglePw(id, btn) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === "password" ? "text" : "password";
+    btn.textContent = inp.type === "password" ? "👁" : "🙈";
+  }
+</script>
 <script src="{{ url_for('static', filename='js/signup.js') }}"></script>
 </body>
 </html>
