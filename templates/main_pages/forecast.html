@@ -48,11 +48,8 @@
         <!-- Chart card -->
         <div class="forecast-chart-card">
             <div class="forecast-chart-title">AI Forecast (Sales Trend)</div>
-            <div class="forecast-model-badges" id="modelBadges">
-                <span class="fc-badge fc-badge-prophet">Prophet</span>
-                <span class="fc-badge fc-badge-hybrid">Hybrid</span>
-                <span class="fc-badge fc-badge-xgb">XGBoost</span>
-            </div>
+            <!-- DEV ONLY: model badges -->
+            <div class="forecast-model-badges" id="modelBadges" style="display:none;"></div>
             <div id="chartArea">
                 <div class="forecast-loading">
                     <div class="forecast-loading-spinner"></div>
@@ -70,37 +67,49 @@
             <div class="forecast-info-text">
                 Do take note that the prediction shows <strong>total sales revenue</strong>, not net profit.
             </div>
-            <div class="forecast-info-text" id="modelSelectionInfo" style="display:none;">
-                <!-- filled by JS -->
+            <div class="forecast-info-text" style="font-size:12px; color:#a07040; background:#fffbf0; border:1px solid #f0ddb0; border-radius:8px; padding:8px 12px; margin-top:6px;">
+                💡 <strong>No actual sales line?</strong> This means there is not enough historical sales data recorded yet. Keep logging your daily sales and it will appear automatically.
+            </div>
+            <!-- DEV ONLY: model selection explanation -->
+            <div id="modelSelectionInfo" style="display:none;">
+                <!-- filled by JS, shown only via dev toggle -->
             </div>
 
-            <!-- Model Accuracy Cards -->
+            <!-- Model Accuracy Cards — DEV ONLY -->
             <div id="accuracySection" style="display:none;">
-                <div style="font-size:13px;font-weight:700;color:#3E1A03;margin-bottom:10px;">Model Comparison</div>
-                <div class="forecast-accuracy-row">
-                    <div class="forecast-accuracy-card forecast-acc-prophet">
-                        <div class="forecast-acc-label">Prophet</div>
-                        <div class="forecast-acc-wmape" id="prophetWmape">—</div>
-                        <div class="forecast-acc-desc">WMAPE (open days)</div>
-                        <div class="forecast-acc-desc" id="prophetMae">MAE: —</div>
-                        <div class="forecast-acc-desc" id="prophetAccuracy">Accuracy: —</div>
-                        <div id="prophetWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
-                    </div>
-                    <div class="forecast-accuracy-card forecast-acc-hybrid" id="hybridCard">
-                        <div class="forecast-acc-label">Hybrid</div>
-                        <div class="forecast-acc-wmape" id="hybridWmape">—</div>
-                        <div class="forecast-acc-desc">WMAPE (open days)</div>
-                        <div class="forecast-acc-desc" id="hybridMae">MAE: —</div>
-                        <div class="forecast-acc-desc" id="hybridAccuracy">Accuracy: —</div>
-                        <div id="hybridWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
-                    </div>
-                    <div class="forecast-accuracy-card forecast-acc-xgb" id="xgbCard">
-                        <div class="forecast-acc-label" id="xgbLabel">XGBoost</div>
-                        <div class="forecast-acc-wmape" id="xgbWmape">—</div>
-                        <div class="forecast-acc-desc">WMAPE (open days)</div>
-                        <div class="forecast-acc-desc" id="xgbMae">MAE: —</div>
-                        <div class="forecast-acc-desc" id="xgbAccuracy">Accuracy: —</div>
-                        <div id="xgbWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                <button id="devToggleBtn" onclick="toggleDevPanel()" style="
+                    margin-bottom:10px; padding:4px 12px; font-size:11px;
+                    background:#eee; border:1px dashed #aaa; border-radius:8px;
+                    cursor:pointer; color:#888; width:auto; margin-top:0;">
+                    🛠 Dev: Show Model Stats
+                </button>
+                <div id="devPanel" style="display:none;">
+                    <div style="font-size:13px;font-weight:700;color:#3E1A03;margin-bottom:10px;">Model Comparison</div>
+                    <div class="forecast-accuracy-row">
+                        <div class="forecast-accuracy-card forecast-acc-prophet">
+                            <div class="forecast-acc-label">Prophet</div>
+                            <div class="forecast-acc-wmape" id="prophetWmape">—</div>
+                            <div class="forecast-acc-desc">WMAPE (open days)</div>
+                            <div class="forecast-acc-desc" id="prophetMae">MAE: —</div>
+                            <div class="forecast-acc-desc" id="prophetAccuracy">Accuracy: —</div>
+                            <div id="prophetWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                        </div>
+                        <div class="forecast-accuracy-card forecast-acc-hybrid" id="hybridCard">
+                            <div class="forecast-acc-label">Hybrid</div>
+                            <div class="forecast-acc-wmape" id="hybridWmape">—</div>
+                            <div class="forecast-acc-desc">WMAPE (open days)</div>
+                            <div class="forecast-acc-desc" id="hybridMae">MAE: —</div>
+                            <div class="forecast-acc-desc" id="hybridAccuracy">Accuracy: —</div>
+                            <div id="hybridWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                        </div>
+                        <div class="forecast-accuracy-card forecast-acc-xgb" id="xgbCard">
+                            <div class="forecast-acc-label" id="xgbLabel">XGBoost</div>
+                            <div class="forecast-acc-wmape" id="xgbWmape">—</div>
+                            <div class="forecast-acc-desc">WMAPE (open days)</div>
+                            <div class="forecast-acc-desc" id="xgbMae">MAE: —</div>
+                            <div class="forecast-acc-desc" id="xgbAccuracy">Accuracy: —</div>
+                            <div id="xgbWinner" style="display:none;" class="forecast-winner-badge">⭐ Best Model</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -116,7 +125,7 @@
                     <th>Date</th>
                     <th>Day</th>
                     <th>Predicted Revenue</th>
-                    <th>Model Used</th>
+                    
                 </tr>
             </thead>
             <tbody id="forecastTableBody"></tbody>
@@ -319,45 +328,33 @@ function renderChart(data) {
     document.getElementById('chartArea').innerHTML = '<canvas id="forecastCanvas" style="max-height:340px;"></canvas>';
     const ctx = document.getElementById('forecastCanvas').getContext('2d');
 
+    // Pick best model values
+    const bestVals = winner === 'prophet' ? propVals
+                   : winner === 'hybrid'  ? hybVals
+                   : xgbVals;
+    const bestColor = winner === 'prophet' ? '#6C7FD8'
+                    : winner === 'hybrid'  ? '#F4A72B'
+                    : '#4BC8A0';
+    const bestBg    = winner === 'prophet' ? 'rgba(108,127,216,0.08)'
+                    : winner === 'hybrid'  ? 'rgba(244,167,43,0.08)'
+                    : 'rgba(75,200,160,0.08)';
+
     const datasets = [
         {
             label: 'Actual Sales',
             data: actualVals,
             borderColor: '#5a2d0c', backgroundColor: 'rgba(90,45,12,0.08)',
             borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#5a2d0c',
-            tension: 0.3, fill: false, spanGaps: false
+            tension: 0.3, fill: false, spanGaps: true
         },
         {
-            label: 'Prophet',
-            data: propVals,
-            borderColor: '#6C7FD8', backgroundColor: 'rgba(108,127,216,0.08)',
-            borderWidth: winner === 'prophet' ? 3 : 1.5,
-            borderDash: winner === 'prophet' ? [] : [5,3],
-            pointRadius: 4, pointBackgroundColor: '#6C7FD8',
-            tension: 0.3, fill: false, spanGaps: false
-        },
-        {
-            label: 'Hybrid (Prophet + Rules)',
-            data: hybVals,
-            borderColor: '#F4A72B', backgroundColor: 'rgba(244,167,43,0.08)',
-            borderWidth: winner === 'hybrid' ? 3 : 1.5,
-            borderDash: winner === 'hybrid' ? [] : [5,3],
-            pointRadius: 4, pointBackgroundColor: '#F4A72B',
-            tension: 0.3, fill: false, spanGaps: false
+            label: 'AI Forecast',
+            data: bestVals,
+            borderColor: bestColor, backgroundColor: bestBg,
+            borderWidth: 3, pointRadius: 4, pointBackgroundColor: bestColor,
+            tension: 0.3, fill: false, spanGaps: true
         }
     ];
-
-    if (!data.xgb_skipped && xgbVals) {
-        datasets.push({
-            label: 'XGBoost',
-            data: xgbVals,
-            borderColor: '#4BC8A0', backgroundColor: 'rgba(75,200,160,0.08)',
-            borderWidth: winner === 'xgb' ? 3 : 1.5,
-            borderDash: winner === 'xgb' ? [] : [5,3],
-            pointRadius: 4, pointBackgroundColor: '#4BC8A0',
-            tension: 0.3, fill: false, spanGaps: false
-        });
-    }
 
     forecastChart = new Chart(ctx, {
         type: 'line',
@@ -386,7 +383,7 @@ function renderChart(data) {
         }
     });
 
-    // Update badges
+    // Update badges (dev only — hidden from users)
     const badgesEl = document.getElementById('modelBadges');
     let badgeHtml = `<span class="fc-badge fc-badge-prophet">Prophet</span>`;
     badgeHtml    += `<span class="fc-badge fc-badge-hybrid">Hybrid</span>`;
@@ -397,6 +394,8 @@ function renderChart(data) {
     }
     badgeHtml += `<span class="fc-badge fc-badge-active">✓ Using: ${winner.toUpperCase()}</span>`;
     badgesEl.innerHTML = badgeHtml;
+    // Show badges inside dev panel toggle
+    document.getElementById('devToggleBtn').setAttribute('data-badges', badgeHtml);
 }
 
 function renderAccuracy(data) {
@@ -475,7 +474,6 @@ function renderTable(data) {
             <td>${p.date}</td>
             <td>${dow}</td>
             <td><strong>${fmtF(p.predicted)}</strong></td>
-            <td><span class="fc-badge ${winnerClass}">${winner}</span></td>
         </tr>`;
     }).join('');
 
@@ -500,6 +498,18 @@ function renderRestockWarnings(data) {
         </div>`).join('');
 
     card.style.display = 'block';
+}
+
+function toggleDevPanel() {
+    const panel   = document.getElementById('devPanel');
+    const info    = document.getElementById('modelSelectionInfo');
+    const btn     = document.getElementById('devToggleBtn');
+    const badges  = document.getElementById('modelBadges');
+    const open    = panel.style.display === 'none';
+    panel.style.display   = open ? 'block' : 'none';
+    info.style.display    = open ? 'block' : 'none';
+    badges.style.display  = open ? 'flex'  : 'none';
+    btn.textContent       = open ? '🛠 Dev: Hide Model Stats' : '🛠 Dev: Show Model Stats';
 }
 
 // ── Init ─────────────────────────────────────
