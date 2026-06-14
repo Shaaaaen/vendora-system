@@ -89,15 +89,15 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await res.json();
 
             if (result.status === 'success') {
-                alert(editMode ? 'Ingredient updated!' : 'Ingredient added!');
+                alert(editMode ? t('ingredient_updated') : t('ingredient_added'));
                 modal.style.display = 'none';
                 window.location.reload();
             } else {
-                alert(result.message || 'Failed to save ingredient.');
+                alert(result.message || t('fail_save_ingredient'));
             }
         } catch (err) {
             console.error(err);
-            alert('Error saving ingredient.');
+            alert(t('error_save_ingredient'));
         }
     });
 
@@ -106,17 +106,17 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.addEventListener('click', async e => {
             const card = e.target.closest('.ingredient-card');
             const id = card?.dataset?.id;
-            if (!id) return alert('Ingredient ID not found!');
-            if (!confirm('Are you sure you want to delete this ingredient?')) return;
+            if (!id) return alert(t('ingredient_id_not_found'));
+            if (!confirm(t('confirm_delete_ingredient'))) return;
 
             try {
                 const res = await fetch(`/api/delete_ingredient/${id}`, {method:'DELETE'});
                 const result = await res.json();
                 if (result.status === 'success') card.remove();
-                else alert(result.message || 'Failed to delete ingredient.');
+                else alert(result.message || t('fail_delete_ingredient'));
             } catch (err) {
                 console.error(err);
-                alert('Error deleting ingredient.');
+                alert(t('error_delete_ingredient'));
             }
         });
     });

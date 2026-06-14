@@ -108,6 +108,25 @@ async function loadTodayStats() {
     const npEl = document.getElementById('statNetProfit');
     npEl.textContent = (netProfit >= 0 ? '+' : '') + fmt(netProfit);
     npEl.className   = 'dash-stat-value ' + (netProfit >= 0 ? 'positive' : 'negative');
+
+    // ── No-recipe warning banner ──────────────────────────────
+    // If revenue > 0 but cost = 0, some products likely have no recipe linked.
+    // The profit figures shown are unreliable — warn the vendor.
+    let warnBanner = document.getElementById('noRecipeWarningBanner');
+    if (revenue > 0 && cost === 0) {
+        if (!warnBanner) {
+            warnBanner = document.createElement('div');
+            warnBanner.id = 'noRecipeWarningBanner';
+            warnBanner.style.cssText = 'background:#FFF3CD;border:1px solid #FFC107;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:13px;color:#856404;display:flex;align-items:center;gap:10px;';
+            const _sym = window.currencySymbol || 'RM';
+            warnBanner.innerHTML = t('no_recipe_dashboard', {sym: _sym});
+            const statsRow = document.querySelector('.dash-stats-row');
+            if (statsRow) statsRow.parentNode.insertBefore(warnBanner, statsRow.nextSibling);
+        }
+        warnBanner.style.display = 'flex';
+    } else if (warnBanner) {
+        warnBanner.style.display = 'none';
+    }
 }
 
 // ── TOP SELLER ───────────────────────────
@@ -137,7 +156,7 @@ async function loadCharts() {
 
 // Monthly bar chart
 function drawMonthlyChart(data) {
-    const labels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const labels = window.getMonthLabels();
     const values = labels.map((_, i) => data[i+1] || 0);
     const currentMonth = new Date().getMonth();
     const ctx = document.getElementById('monthlyChart').getContext('2d');
@@ -151,7 +170,7 @@ function drawMonthlyChart(data) {
 
 // Weekly bar chart
 function drawWeeklyChart(data) {
-    const labels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const labels = window.getDayLabels();
     const values = labels.map((_, i) => data[i] || 0);
     const today  = new Date().getDay();
     const ctx = document.getElementById('weeklyChart').getContext('2d');
@@ -255,7 +274,7 @@ async function saveExpense(cat) {
 
     // Save mode — read input
     const inputVal = parseFloat(document.getElementById(`expInput-${cat}`).value);
-    if (isNaN(inputVal) || inputVal < 0) { alert('Please enter a valid amount.'); return; }
+    if (isNaN(inputVal) || inputVal < 0) { alert(t('valid_amount')); return; }
 
     const { month, year } = currentMonthYear();
     const res = await fetch('/api/dashboard/save_expense', {
@@ -271,7 +290,7 @@ async function saveExpense(cat) {
         drawExpensePie();
         await loadTodayStats();   // refresh net profit
     } else {
-        alert('Failed to save expense.');
+        alert(t('fail_save_expense'));
     }
 }
 

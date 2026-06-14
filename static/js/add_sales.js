@@ -37,8 +37,8 @@ async function loadDailySales() {
             emptyCard.innerHTML = `
                 <div class="spc-empty-inner">
                     <span class="spc-empty-icon">🛒</span>
-                    <p class="spc-empty-title">No Products Yet</p >
-                    <p class="spc-empty-sub">Add products first before recording sales.</p >
+                    <p class="spc-empty-title">${t('no_products_yet')}</p >
+                    <p class="spc-empty-sub">${t('add_products_first')}</p >
                 </div>`;
             container.appendChild(emptyCard);
             return;
@@ -50,7 +50,7 @@ async function loadDailySales() {
 
     } catch (err) {
         console.error("Error loading daily sales:", err);
-        container.innerHTML = '<p style="color:red;padding:16px;">Failed to load sales data.</p >';
+        container.innerHTML = `<p style="color:red;padding:16px;">${t('fail_load_sales')}</p >`;
     }
 }
 
@@ -67,14 +67,14 @@ function buildSaleCard(product, icon, index = 0) {
         <div class="spc-header">
             <div class="spc-icon-bubble">${icon}</div>
             ${isSaved
-                ? '<span class="spc-status-chip spc-chip-done">✓ Done</span>'
-                : '<span class="spc-status-chip spc-chip-pending">Pending</span>'}
+                ? `<span class="spc-status-chip spc-chip-done">${t('status_done')}</span>`
+                : `<span class="spc-status-chip spc-chip-pending">${t('status_pending')}</span>`}
         </div>
         <div class="spc-body">
             <div class="spc-name">${product.product_name}</div>
             <div class="spc-hint">${isSaved
-                ? 'Sales updated for today'
-                : "Remember to update today's quantity"}</div>
+                ? t('sales_updated')
+                : t('update_quantity')}</div>
         </div>
         <div class="spc-footer">
             <div class="spc-stepper">
@@ -106,7 +106,7 @@ function changeQty(product_id, delta) {
 async function saveSale(product_id) {
     const input    = document.getElementById(`qty-${product_id}`);
     const quantity = parseInt(input.value);
-    if (!quantity || quantity < 1) { alert('Please enter a valid quantity.'); return; }
+    if (!quantity || quantity < 1) { alert(t('valid_quantity')); return; }
 
     const res    = await fetch('/api/record_sale', {
         method: 'POST',
@@ -126,7 +126,7 @@ async function saveSale(product_id) {
         old.replaceWith(buildSaleCard(product, iconMap[product_id] || '🍽️'));
         await loadSalesHistory();
     } else {
-        alert(result.message || 'Error recording sale.');
+        alert(result.message || t('error_recording_sale'));
     }
 }
 
@@ -166,7 +166,7 @@ function modalChangeQty(delta) {
 async function submitModalSale() {
     const product_id = parseInt(document.getElementById('modalProductSelect').value);
     const quantity   = parseInt(document.getElementById('modalQtyInput').value);
-    if (!product_id)               { alert('Please select a product.');        return; }
+    if (!product_id)               { alert(t('select_product'));        return; }
     if (!quantity || quantity < 1) { alert('Please enter a valid quantity.');   return; }
 
     const res    = await fetch('/api/record_sale', {
@@ -182,7 +182,7 @@ async function submitModalSale() {
         await loadDailySales();
         await loadSalesHistory();
     } else {
-        alert(result.message || 'Error recording sale.');
+        alert(result.message || t('error_recording_sale'));
     }
 }
 
@@ -213,8 +213,8 @@ async function loadSalesHistory() {
             color:#7a5c3a;
         ">
         <div style="font-size:38px; margin-bottom:10px;">📅</div>
-        <div style="font-size:16px; font-weight:600;">Please select a date</div>
-        <div style="font-size:13px; color:#aaa;">Choose a date to view sales records</div>
+        <div style="font-size:16px; font-weight:600;">${t('select_date_view')}</div>
+        <div style="font-size:13px; color:#aaa;">${t('choose_date_view')}</div>
         </div>
         `;
         return;
@@ -235,10 +235,10 @@ async function loadSalesHistory() {
             ">
                 <div style="font-size:40px; margin-bottom:10px;">📭</div>
                 <div style="font-size:16px; font-weight:600; margin-bottom:6px;">
-                    No records found
+                    ${t('no_records_found')}
                 </div>
                 <div style="font-size:13px; color:#aaa; margin-bottom:16px;">
-                    No sales recorded for this date
+                    ${t('no_sales_this_date')}
                 </div>
 
                 <button onclick="quickAddForSelectedDate()" style="
@@ -262,12 +262,12 @@ async function loadSalesHistory() {
         <div class="shc-summary-row">
             <div class="shc-summary-pill">
                 <span class="shc-summary-icon">🧾</span>
-                <span class="shc-summary-label">Orders</span>
+                <span class="shc-summary-label">${t('orders_label')}</span>
                 <span class="shc-summary-val">${sales.length}</span>
             </div>
             <div class="shc-summary-pill">
                 <span class="shc-summary-icon">💰</span>
-                <span class="shc-summary-label">Revenue</span>
+                <span class="shc-summary-label">${t('revenue_label')}</span>
                 <span class="shc-summary-val">${fmtS(totalRevenue)}</span>
             </div>
         </div>
@@ -296,7 +296,7 @@ function quickAddForSelectedDate() {
         const selectedDate = document.getElementById('filterDate').value;
 
         if (!selectedDate) {
-            alert('Please select a date first.');
+            alert(t('select_date'));
             return;
         }
 
@@ -360,8 +360,8 @@ async function submitHistoricalSale() {
         const sale_date   = document.getElementById('histDate').value;
         const total_profit = parseFloat(document.getElementById('histProfit').value);
 
-        if (!sale_date) { alert('Please select a date.'); return; }
-        if (isNaN(total_profit) || total_profit < 0) { alert('Please enter a valid total profit.'); return; }
+        if (!sale_date) { alert(t('select_date')); return; }
+        if (isNaN(total_profit) || total_profit < 0) { alert(t('valid_profit')); return; }
 
         // Collect optional items
         const rows = document.getElementById('histItemsList').querySelectorAll('div');
@@ -386,7 +386,7 @@ async function submitHistoricalSale() {
             await loadSalesHistory();
             showSaleToast('✅ Historical sale saved!');
         } else {
-            alert(result.message || 'Error saving historical sale.');
+            alert(result.message || t('something_wrong'));
         }
         return;
     }
@@ -425,7 +425,7 @@ async function submitHistoricalSale() {
     });
 
         if (!payload.length) {
-            alert("No valid data");
+            alert(t('no_valid_data'));
             return;
         }
 

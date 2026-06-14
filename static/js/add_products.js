@@ -125,7 +125,7 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
     const ingredients = collectIngredientRows('addIngredientContainer');
 
     if (!product_name || isNaN(selling_price)) {
-        alert('Please fill in all required fields.');
+        alert(t('fill_required'));
         return;
     }
 
@@ -140,7 +140,7 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
         closeAddModal();
         loadProducts();
     } else {
-        alert('Error: ' + (data.message || 'Something went wrong.'));
+        alert('Error: ' + (data.message || t('something_wrong')));
     }
 });
 
@@ -193,7 +193,7 @@ document.getElementById('editProductForm').addEventListener('submit', async (e) 
     const ingredients = collectIngredientRows('editIngredientContainer');
 
     if (!product_name || isNaN(selling_price)) {
-        alert('Please fill in all required fields.');
+        alert(t('fill_required'));
         return;
     }
 
@@ -208,17 +208,17 @@ document.getElementById('editProductForm').addEventListener('submit', async (e) 
         closeEditModal();
         loadProducts();
     } else {
-        alert('Error: ' + (data.message || 'Something went wrong.'));
+        alert('Error: ' + (data.message || t('something_wrong')));
     }
 });
 
 // ===== DELETE PRODUCT =====
 async function deleteProduct(product_id) {
-    if (!confirm('Delete this product?')) return;
+    if (!confirm(t('confirm_delete_product'))) return;
     const res = await fetch(`/api/delete_product/${product_id}`, { method: 'DELETE' });
     const data = await res.json();
     if (data.status === 'success') loadProducts();
-    else alert('Error deleting product.');
+    else alert(t('error_delete_product'));
 }
 
 // ===== LOAD & RENDER PRODUCTS =====
@@ -268,6 +268,7 @@ async function loadProducts() {
         const fmtP = (v) => sym + ' ' + (parseFloat(v) * rate).toFixed(2);
         const icon = product.product_icon || '🍽️';
 
+        const noRecipe = recipe.length === 0;
         const card = document.createElement('div');
         card.className = 'product-card';
         card.innerHTML = `
@@ -279,6 +280,7 @@ async function loadProducts() {
                 </div>
             </div>
             <h3 class="product-name">${product.product_name}</h3>
+            ${noRecipe ? `<div class="no-recipe-warning">${t("no_recipe_warning", {sym})}</div>` : ''}
             <div class="product-info">
                 <div class="info-row">
                     <span>Selling Price:</span>
@@ -286,11 +288,11 @@ async function loadProducts() {
                 </div>
                 <div class="info-row">
                     <span>Cost:</span>
-                    <span>${fmtP(cost)}</span>
+                    <span>${noRecipe ? '<span style="color:#FF3B3B;">' + fmtP(cost) + ' ⚠️</span>' : fmtP(cost)}</span>
                 </div>
                 <div class="info-row profit-row">
                     <span>Profit:</span>
-                    <span style="color:${profitColor};font-weight:700;">${fmtP(profit)}</span>
+                    <span style="color:${noRecipe ? '#FF9800' : profitColor};font-weight:700;">${noRecipe ? fmtP(profit) + ' ⚠️' : fmtP(profit)}</span>
                 </div>
             </div>
             <div class="product-divider"></div>

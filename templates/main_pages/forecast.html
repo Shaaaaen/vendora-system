@@ -53,7 +53,7 @@
             <div id="chartArea">
                 <div class="forecast-loading">
                     <div class="forecast-loading-spinner"></div>
-                    <div class="forecast-loading-text">Running AI models…</div>
+                    <div class="forecast-loading-text" id="initLoadingMsg">Running AI models…</div>
                 </div>
             </div>
         </div>
@@ -157,8 +157,8 @@ const fmtF = (v) => sym + ' ' + (parseFloat(v) * rate).toFixed(2);
 let currentDays = 7;
 let forecastChart = null;
 
-const DAYS_OF_WEEK = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS_OF_WEEK = window.getDayLabels();
+const MONTHS_SHORT = window.getMonthLabels();
 
 function formatDateLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
@@ -186,7 +186,7 @@ async function loadForecast(isPolling = false) {
         document.getElementById('chartArea').innerHTML = `
             <div class="forecast-loading">
                 <div class="forecast-loading-spinner"></div>
-                <div class="forecast-loading-text" id="loadingMsg">Loading forecast…</div>
+                <div class="forecast-loading-text" id="loadingMsg">${t('forecast_loading')}</div>
             </div>`;
         document.getElementById('tableCard').style.display = 'none';
         document.getElementById('restockCard').style.display = 'none';
@@ -201,7 +201,7 @@ async function loadForecast(isPolling = false) {
         // ── Still computing in background — poll every 5s ────
         if (data.status === 'computing') {
             const el = document.getElementById('loadingMsg');
-            if (el) el.textContent = '⏳ AI models are running in the background… page stays usable!';
+            if (el) el.textContent = t('forecast_computing');
             if (_pollTimer) clearTimeout(_pollTimer);
             _pollTimer = setTimeout(() => loadForecast(true), 5000);
             _prevStatus = 'computing';
@@ -216,7 +216,7 @@ async function loadForecast(isPolling = false) {
             document.getElementById('chartArea').innerHTML = `
                 <div class="forecast-no-data">
                     <div class="forecast-no-data-icon">🔮</div>
-                    <div class="forecast-no-data-title">Not Enough Data</div>
+                    <div class="forecast-no-data-title">${t('not_enough_data')}</div>
                     <div class="forecast-no-data-sub">${data.message}<br>You have ${data.rows} day(s) of data. Use the Import CSV button below to add historical sales quickly!</div>
                 </div>`;
             return;
@@ -226,7 +226,7 @@ async function loadForecast(isPolling = false) {
             document.getElementById('chartArea').innerHTML = `
                 <div class="forecast-no-data">
                     <div class="forecast-no-data-icon">⚠️</div>
-                    <div class="forecast-no-data-title">Forecast Error</div>
+                    <div class="forecast-no-data-title">${t('forecast_error')}</div>
                     <div class="forecast-no-data-sub">${data.message || 'An error occurred. Please try again.'}</div>
                 </div>`;
             return;
@@ -257,8 +257,8 @@ async function loadForecast(isPolling = false) {
         document.getElementById('chartArea').innerHTML = `
             <div class="forecast-no-data">
                 <div class="forecast-no-data-icon">⚠️</div>
-                <div class="forecast-no-data-title">Connection Error</div>
-                <div class="forecast-no-data-sub">Could not connect to the forecast service.</div>
+                <div class="forecast-no-data-title">${t('connection_error')}</div>
+                <div class="forecast-no-data-sub">${t('could_not_connect')}</div>
             </div>`;
     }
 }
@@ -266,7 +266,7 @@ async function loadForecast(isPolling = false) {
 async function importCSV() {
     const input = document.getElementById('csvFileInput');
     if (!input.files.length) {
-        alert('Please select a CSV file first.');
+        alert(t('select_csv'));
         return;
     }
     const file = input.files[0];
@@ -341,14 +341,14 @@ function renderChart(data) {
 
     const datasets = [
         {
-            label: 'Actual Sales',
+            label: t('actual_sales'),
             data: actualVals,
             borderColor: '#5a2d0c', backgroundColor: 'rgba(90,45,12,0.08)',
             borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#5a2d0c',
             tension: 0.3, fill: false, spanGaps: true
         },
         {
-            label: 'AI Forecast',
+            label: t('ai_forecast'),
             data: bestVals,
             borderColor: bestColor, backgroundColor: bestBg,
             borderWidth: 3, pointRadius: 4, pointBackgroundColor: bestColor,
@@ -517,6 +517,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = new Date();
     const label = now.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', weekday:'long' });
     document.getElementById('todayLabel').textContent = `Today: ${label}`;
+    // Set initial loading text in translated language
+    const initMsg = document.getElementById('initLoadingMsg');
+    if (initMsg) initMsg.textContent = t('forecast_computing').replace('⏳ ', '');
     loadForecast();
 });
 </script>
