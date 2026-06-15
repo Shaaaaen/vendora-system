@@ -155,6 +155,10 @@ def register():
     if cursor.fetchone():
         cursor.close(); db.close()
         return jsonify({"status": "fail", "message": "Email already exists"})
+    cursor.execute("SELECT * FROM users WHERE security_key = %s", (security_key,))
+    if cursor.fetchone():
+        cursor.close(); db.close()
+        return jsonify({"status": "fail", "message": "Security key already in use. Please choose a different security key."})
     hashed_pw     = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     hashed_answer = bcrypt.hashpw(security_answer.encode('utf-8'), bcrypt.gensalt())
     try:

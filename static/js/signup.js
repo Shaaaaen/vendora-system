@@ -31,7 +31,8 @@ const translations = {
     q10: "What is your favorite sport?",
     fillAll: "Please fill all fields",
     passwordMismatch: "Passwords do not match",
-    signupSuccess: "Signup successful!"
+    signupSuccess: "Signup successful!",
+    duplicateSecurityKey: "Security key already in use. Please choose a different security key."
   },
   zh: {
     welcome: "欢迎来到 Vendora!",
@@ -400,6 +401,8 @@ function submitSignup() {
       alert(translations[currentLang].signupSuccess);
       localStorage.removeItem("signupData");
       window.location.href = "/login";
+    } else if (data.message && data.message.toLowerCase().includes("security key")) {
+      errorMsg.textContent = translations[currentLang].duplicateSecurityKey;
     } else {
       errorMsg.textContent = data.message || translations[currentLang].fillAll;
     }

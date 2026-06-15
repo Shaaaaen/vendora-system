@@ -117,13 +117,22 @@ async function loadTodayStats() {
         if (!warnBanner) {
             warnBanner = document.createElement('div');
             warnBanner.id = 'noRecipeWarningBanner';
-            warnBanner.style.cssText = 'background:#FFF3CD;border:1px solid #FFC107;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:13px;color:#856404;display:flex;align-items:center;gap:10px;';
+            warnBanner.style.cssText = 'background:#FFF3CD;border:1px solid #FFC107;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:13px;color:#856404;display:flex;align-items:center;justify-content:space-between;gap:10px;';
             const _sym = window.currencySymbol || 'RM';
-            warnBanner.innerHTML = t('no_recipe_dashboard', {sym: _sym});
+            const msgSpan = document.createElement('span');
+            msgSpan.innerHTML = t('no_recipe_dashboard', {sym: _sym});
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '✕';
+            closeBtn.title = 'Dismiss';
+            closeBtn.style.cssText = 'background:none;border:none;cursor:pointer;font-size:16px;color:#856404;flex-shrink:0;line-height:1;padding:0 4px;';
+            closeBtn.addEventListener('click', () => { warnBanner.remove(); });
+            warnBanner.appendChild(msgSpan);
+            warnBanner.appendChild(closeBtn);
             const statsRow = document.querySelector('.dash-stats-row');
-            if (statsRow) statsRow.parentNode.insertBefore(warnBanner, statsRow.nextSibling);
+            if (statsRow) statsRow.parentNode.insertBefore(warnBanner, statsRow);
+        } else {
+            warnBanner.style.display = 'flex';
         }
-        warnBanner.style.display = 'flex';
     } else if (warnBanner) {
         warnBanner.style.display = 'none';
     }

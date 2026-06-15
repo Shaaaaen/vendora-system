@@ -1,4 +1,53 @@
 // ===== FOOD ICONS FOR PICKER =====
+// ===== NO-INGREDIENT WARNING BANNER =====
+function showNoIngredientWarning() {
+    const existingBanner = document.getElementById('noIngredientWarningBanner');
+    if (existingBanner) existingBanner.remove();
+
+    const banner = document.createElement('div');
+    banner.id = 'noIngredientWarningBanner';
+    banner.style.cssText = [
+        'background:#FFF3CD',
+        'border:1px solid #FFC107',
+        'border-radius:8px',
+        'padding:12px 16px',
+        'margin-bottom:14px',
+        'font-size:13px',
+        'color:#856404',
+        'display:flex',
+        'align-items:center',
+        'justify-content:space-between',
+        'gap:10px',
+        'position:relative',
+    ].join(';');
+
+    const msg = document.createElement('span');
+    msg.innerHTML = '⚠️ <strong>Recommended:</strong> This product has no ingredients linked. Adding ingredients enables accurate cost and profit calculations. Go to this product\'s <strong>Edit</strong> to add ingredients.';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '✕';
+    closeBtn.title = 'Dismiss';
+    closeBtn.style.cssText = [
+        'background:none',
+        'border:none',
+        'cursor:pointer',
+        'font-size:16px',
+        'color:#856404',
+        'flex-shrink:0',
+        'line-height:1',
+        'padding:0 4px',
+    ].join(';');
+    closeBtn.addEventListener('click', () => banner.remove());
+
+    banner.appendChild(msg);
+    banner.appendChild(closeBtn);
+
+    const productList = document.getElementById('productList');
+    if (productList && productList.parentNode) {
+        productList.parentNode.insertBefore(banner, productList);
+    }
+}
+
 const FOOD_ICONS = [
     '🍽️','🍜','🍛','🍲','🥘','🍱','🥗','🍣','🍤','🍗',
     '🍖','🥩','🌮','🌯','🥪','🥙','🧆','🥚','🍳','🥞',
@@ -139,6 +188,9 @@ document.getElementById('addProductForm').addEventListener('submit', async (e) =
     if (data.status === 'success') {
         closeAddModal();
         loadProducts();
+        if (ingredients.length === 0) {
+            showNoIngredientWarning();
+        }
     } else {
         alert('Error: ' + (data.message || t('something_wrong')));
     }
