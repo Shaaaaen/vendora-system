@@ -11,13 +11,16 @@ vendora-system/
 │
 ├── py/                         # Python backend (Flask application)
 │   ├── app.py                  # Main Flask app — routes, logic, server entry point
+│   ├── case_study_3/           # Forecasting / case study scripts and datasets
 │   ├── evaluate_models.py      # Sales forecasting model evaluation
 │   ├── seed_data.py            # Script to seed initial data into the database
-│   ├── tempCodeRunnerFile.py   # Temporary file (can be ignored)
 │   └── wmape.chart.py          # WMAPE (forecast accuracy) chart generation
 │
 ├── static/                     # Frontend static assets
 │   ├── assets/                 # Images and other media assets
+│   │   ├── icons/
+│   │   └── images/
+│   │       └── profile/
 │   ├── css/
 │   │   ├── mainpage.css        # Styles for main pages
 │   │   └── style.css           # Global stylesheet
@@ -49,6 +52,8 @@ vendora-system/
 │   ├── security.html           # Security settings page
 │   ├── signup.html             # Registration page
 │   └── splash.html             # Splash / landing page
+│
+├── runtime.txt                 # Runtime version hint for deployment platforms
 │
 ├── .gitattributes              # Git line ending settings
 ├── .gitignore                  # Files excluded from Git
