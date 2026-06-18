@@ -12,6 +12,16 @@ vendora-system/
 ├── py/                         # Python backend (Flask application)
 │   ├── app.py                  # Main Flask app — routes, logic, server entry point
 │   ├── case_study_3/           # Forecasting / case study scripts and datasets
+│   │   ├── check_ab.py         # Quick A/B scenario comparison helper
+│   │   ├── ComparisonFigure.py # Builds the model comparison chart image
+│   │   ├── comparison.png      # Saved comparison figure produced by the chart script
+│   │   ├── cs3_scenario_a.csv  # Scenario A synthetic revenue dataset
+│   │   ├── cs3_scenario_b.csv  # Scenario B synthetic revenue dataset
+│   │   ├── cs3_scenario_c.csv  # Scenario C synthetic revenue dataset
+│   │   ├── cs3_scenario_d.csv  # Scenario D synthetic revenue dataset
+│   │   ├── forecast_engine.py  # Core forecasting / metric evaluation engine
+│   │   ├── generate_cs3_datasets.py # Generates the four scenario CSV datasets
+│   │   └── run_cs3_evaluation.py # Runs evaluation across all Case Study 3 scenarios
 │   ├── evaluate_models.py      # Sales forecasting model evaluation
 │   ├── seed_data.py            # Script to seed initial data into the database
 │   └── wmape.chart.py          # WMAPE (forecast accuracy) chart generation
