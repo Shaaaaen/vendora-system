@@ -68,6 +68,14 @@ Make sure you have the following installed before running the system:
 - [pip](https://pip.pypa.io/en/stable/)
 - (Optional) [Docker](https://www.docker.com/) — if running via Docker
 
+You also need a configured `.env` file for the Flask app. The app reads these values:
+
+- `SECRET_KEY`
+- `DATABASE_URL` or `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
 ---
 
 ## 🚀 How to Run the System (Locally)
@@ -122,13 +130,13 @@ docker build -t vendora-system .
 ### 2. Run the Container
 
 ```bash
-docker run -p 5000:5000 vendora-system
+docker run -p 7860:7860 vendora-system
 ```
 
 ### 3. Open in Browser
 
 ```
-http://localhost:5000
+http://localhost:7860
 ```
 
 ---
@@ -155,6 +163,7 @@ All dependencies are listed in `requirements.txt`. Main ones include:
 
 - **Flask** — Web framework
 - **Cloudinary** — Cloud image storage (for avatar/product images)
+- **Matplotlib** — Chart generation for forecasting/evaluation scripts
 - Other libraries for forecasting and data processing
 
 ---

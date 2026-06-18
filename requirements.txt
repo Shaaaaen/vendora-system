@@ -13,3 +13,4 @@ holidays
 cloudinary
 gunicorn
 apscheduler
+matplotlib
