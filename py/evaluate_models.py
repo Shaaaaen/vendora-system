@@ -1,8 +1,4 @@
 """
-evaluate_models.py
-==================
-Standalone model evaluation script for Vendora FYP — Chapter 5.
-
 Evaluates three forecasting models on four raw source datasets using
 a hold-out backtest methodology:
   - 80% training / 20% hold-out split per source
@@ -25,19 +21,6 @@ Excluded dataset:
     Reason: lag-1 autocorr = 0.033, lag-7 = 0.036 — near-zero, no temporal
     structure. All models score below 42% accuracy — not representative of
     real micro-vendor conditions. See Chapter 5 Section 5.2.5.
-
-HOW TO RUN:
-  1. Open terminal or VS Code in:
-       C:\\Users\\yixuan\\Downloads\\Vendora_frontend\\project_root\\py
-  2. Install dependencies (one-time):
-       pip install pandas numpy prophet xgboost holidays
-  3. Run:
-       python evaluate_models.py
-  4. Output:
-       - Results table printed in terminal
-       - model_evaluation_results.csv saved to the py folder
-
-EXPECTED RUNTIME: ~3-8 minutes depending on your machine.
 """
 
 import warnings
@@ -47,12 +30,6 @@ import os
 import pandas as pd
 import numpy as np
 import holidays as hol_lib
-
-# =============================================================================
-# CONFIG — paths set to your actual folder structure
-#   Sources: C:\Users\yixuan\Downloads\Vendora_frontend\project_root\sources
-#   Script:  C:\Users\yixuan\Downloads\Vendora_frontend\project_root\py
-# =============================================================================
 
 SOURCES_DIR = r"C:\Users\yixuan\Downloads\Vendora_frontend\project_root\sources"
 OUTPUT_DIR  = r"C:\Users\yixuan\Downloads\Vendora_frontend\project_root\py"
