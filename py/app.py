@@ -8,6 +8,7 @@ from apscheduler.triggers.cron import CronTrigger
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from flask_cors import CORS
 import mysql.connector
+import mysql.connector.pooling
 import bcrypt
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -69,12 +70,24 @@ _model_store_lock = threading.Lock()
 PROPHET_MAX_DAYS  = 365
 
 # --- DB ---
-def get_db_connection():
+# Connection pool: created once, reused across requests. Avoids paying a
+# fresh TCP + TLS handshake to Aiven on every single request, which was
+# the main source of per-page slowness. get_db_connection() keeps the same
+# signature/return type as before, so every existing call site (conn = ...
+# / conn.close()) works unchanged — .close() returns the connection to the
+# pool instead of actually closing the socket.
+_db_pool      = None
+_db_pool_lock = threading.Lock()
+
+def _build_pool():
     database_url = os.environ.get('DATABASE_URL')
     if database_url:
         import urllib.parse
         parsed = urllib.parse.urlparse(database_url)
-        return mysql.connector.connect(
+        return mysql.connector.pooling.MySQLConnectionPool(
+            pool_name="vendora_pool",
+            pool_size=8,
+            pool_reset_session=True,
             host=parsed.hostname,
             port=parsed.port or 3306,
             user=parsed.username,
@@ -82,12 +95,42 @@ def get_db_connection():
             database=parsed.path.lstrip('/'),
             ssl_disabled=False
         )
-    return mysql.connector.connect(
+    return mysql.connector.pooling.MySQLConnectionPool(
+        pool_name="vendora_pool",
+        pool_size=8,
+        pool_reset_session=True,
         host=os.environ.get('DB_HOST', 'localhost'),
         user=os.environ.get('DB_USER', 'root'),
         password=os.environ.get('DB_PASSWORD', '777'),
         database=os.environ.get('DB_NAME', 'vendora_db')
     )
+
+def get_db_connection():
+    global _db_pool
+    if _db_pool is None:
+        with _db_pool_lock:
+            if _db_pool is None:   # re-check inside lock (avoid race on first request)
+                _db_pool = _build_pool()
+    try:
+        return _db_pool.get_connection()
+    except mysql.connector.errors.PoolError:
+        # Pool exhausted (e.g. a connection somewhere wasn't closed/returned).
+        # Fall back to a direct connection rather than failing the request outright.
+        database_url = os.environ.get('DATABASE_URL')
+        if database_url:
+            import urllib.parse
+            parsed = urllib.parse.urlparse(database_url)
+            return mysql.connector.connect(
+                host=parsed.hostname, port=parsed.port or 3306,
+                user=parsed.username, password=parsed.password,
+                database=parsed.path.lstrip('/'), ssl_disabled=False
+            )
+        return mysql.connector.connect(
+            host=os.environ.get('DB_HOST', 'localhost'),
+            user=os.environ.get('DB_USER', 'root'),
+            password=os.environ.get('DB_PASSWORD', '777'),
+            database=os.environ.get('DB_NAME', 'vendora_db')
+        )
 
 # --- Context ---
 @app.context_processor
