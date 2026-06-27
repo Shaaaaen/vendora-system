@@ -157,8 +157,9 @@ const fmtF = (v) => sym + ' ' + (parseFloat(v) * rate).toFixed(2);
 let currentDays = 7;
 let forecastChart = null;
 
-const DAYS_OF_WEEK = window.getDayLabels();
-const MONTHS_SHORT = window.getMonthLabels();
+// Initialized lazily after main.js (defer) has loaded — see DOMContentLoaded below
+let DAYS_OF_WEEK = null;
+let MONTHS_SHORT = null;
 
 function formatDateLabel(dateStr) {
     const d = new Date(dateStr + 'T00:00:00');
@@ -514,6 +515,10 @@ function toggleDevPanel() {
 
 // ── Init ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    // main.js (defer) has now run — safe to call getDayLabels / getMonthLabels
+    DAYS_OF_WEEK = window.getDayLabels();
+    MONTHS_SHORT = window.getMonthLabels();
+
     const now = new Date();
     const label = now.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', weekday:'long' });
     document.getElementById('todayLabel').textContent = `Today: ${label}`;
