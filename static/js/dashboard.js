@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadTodayStats();  // needs expenses loaded
     await loadCharts();
 
-    document.getElementById('monthPickerUI').addEventListener('change', loadCharts);
+    document.getElementById('monthPickerUI').addEventListener('change', () => { updateMonthPickerLabel(); loadCharts(); });
     document.getElementById('monthPicker').addEventListener('change', loadCharts);
     document.getElementById('datePicker').addEventListener('change', loadTodayStats);
 });
@@ -53,6 +53,30 @@ function formatDate(d) {
     return `${String(d.getDate()).padStart(2,'0')} / ${String(d.getMonth()+1).padStart(2,'0')} / ${d.getFullYear()}`;
 }
 
+function updateMonthPickerLabel() {
+    const el    = document.getElementById('monthPickerUI');
+    const label = document.getElementById('monthPickerLabel');
+    if (!el || !label || !el.value) return;
+    const [year, month] = el.value.split('-');
+    const months = window.getMonthLabels();                 // translated month array
+    const fullMonthNames = {
+        en:    ['January','February','March','April','May','June','July','August','September','October','November','December'],
+        'zh-CN':['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+        ms:    ['Januari','Februari','Mac','April','Mei','Jun','Julai','Ogos','September','Oktober','November','Disember'],
+        id:    ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],
+        bn:    ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'],
+        ne:    ['जनवरी','फेब्रुअरी','मार्च','अप्रिल','मे','जुन','जुलाई','अगस्ट','सेप्टेम्बर','अक्टोबर','नोभेम्बर','डिसेम्बर'],
+        hi:    ['जनवरी','फरवरी','मार्च','अप्रैल','मई','जून','जुलाई','अगस्त','सितम्बर','अक्टूबर','नवम्बर','दिसम्बर'],
+        my:    ['ဇန်နဝါရီ','ဖေဖော်ဝါရီ','မတ်','ဧပြီ','မေ','ဇွန်','ဇူလိုင်','ဩဂုတ်','စက်တင်ဘာ','အောက်တိုဘာ','နိုဝင်ဘာ','ဒီဇင်ဘာ'],
+        fil:   ['Enero','Pebrero','Marso','Abril','Mayo','Hunyo','Hulyo','Agosto','Setyembre','Oktubre','Nobyembre','Disyembre'],
+        vi:    ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6','Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'],
+    };
+    const lang      = localStorage.getItem('selectedLang') || 'en';
+    const nameList  = fullMonthNames[lang] || fullMonthNames['en'];
+    const monthName = nameList[parseInt(month, 10) - 1];
+    label.textContent = `${monthName} ${year}`;
+}
+
 function setDefaultMonth() {
     const el = document.getElementById('monthPickerUI');
     if (!el) return;
@@ -62,6 +86,7 @@ function setDefaultMonth() {
     const month = String(now.getMonth() + 1).padStart(2, '0');
 
     el.value = `${year}-${month}`;
+    updateMonthPickerLabel();
 }
 
 // ── RESTOCK ALERT ────────────────────────
@@ -204,7 +229,7 @@ function drawProductPie(products) {
     productPieChart = new Chart(ctx, {
         type: 'doughnut',
         data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0, hoverOffset: 8 }] },
-        options: { cutout: '60%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.label}: ${c.parsed}` } } }, responsive: true, maintainAspectRatio: true }
+        options: { cutout: '60%', plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => { const total = values.reduce((a,b)=>a+b,0)||1; const pct = ((c.parsed/total)*100).toFixed(1); return `${c.label}: ${c.parsed} (${pct}%)`; } } } }, responsive: true, maintainAspectRatio: true }
     });
 
     document.getElementById('productPieLegend').innerHTML = labels.map((l, i) =>

@@ -46,6 +46,7 @@ window.UI_STRINGS = {
   // ── Dashboard dynamic text ─────────────────────────
   items_restock:  { en:'items need to restock soon', 'zh-CN':'项商品需要尽快补货', ms:'item perlu diisi semula segera', id:'item perlu segera diisi ulang', bn:'টি আইটেম শীঘ্রই পুনরায় স্টক করতে হবে', ne:'वस्तुहरू चाँडै पुनःभण्डार गर्न आवश्यक', hi:'आइटम जल्द ही पुनः स्टॉक की जरूरत है', my:'ပစ္စည်းများကို မကြာမီ ပြန်ဖြည့်ရန်လိုသည်', fil:'mga item na kailangang mag-restock', vi:'mặt hàng cần nhập hàng sớm' },
   orders_label:   { en:'Orders', 'zh-CN':'订单', ms:'Pesanan', id:'Pesanan', bn:'অর্ডার', ne:'अर्डर', hi:'ऑर्डर', my:'အမှာစာ', fil:'Mga Order', vi:'Đơn hàng' },
+  click_select_month: { en:'Click to Select Month', 'zh-CN':'点击选择月份', ms:'Klik untuk Pilih Bulan', id:'Klik untuk Pilih Bulan', bn:'মাস নির্বাচন করতে ক্লিক করুন', ne:'महिना छान्न क्लिक गर्नुहोस्', hi:'महीना चुनने के लिए क्लिक करें', my:'လကိုရွေးရန် နှိပ်ပါ', fil:'I-click para Pumili ng Buwan', vi:'Nhấn để chọn tháng' },
   revenue_label:  { en:'Revenue', 'zh-CN':'收入', ms:'Pendapatan', id:'Pendapatan', bn:'রাজস্ব', ne:'राजस्व', hi:'राजस्व', my:'ဝင်ငွေ', fil:'Kita', vi:'Doanh thu' },
   // ── Chart axis labels ──────────────────────────────
   months: {

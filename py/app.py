@@ -1296,28 +1296,27 @@ def _run_forecast_engine(user_id, country_code='MY'):
                    'xgb': xgb_result}.get(winner, prophet_result)
 
     # Low stock warnings
+    # Formula: projected_need = target_stock (per day) x FORECAST_DAYS
+    #          to_add = max(0, projected_need - current_stock)
+    # Uses database current_stock directly — never produces negative values.
     low_stock = []
     try:
         conn   = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("""
-            SELECT AVG(total_amount) as avg_rev FROM sale
-            WHERE user_id=%s AND sale_date>=DATE_SUB(CURDATE(),INTERVAL 30 DAY)
-        """, (user_id,))
-        avg_daily = float((cursor.fetchone() or {}).get('avg_rev') or 0)
-        cursor.execute("""
             SELECT ingredient_name, unit, current_stock, target_stock
             FROM ingredient WHERE user_id=%s AND target_stock>0
         """, (user_id,))
-        total_fc  = sum(r['predicted'] for r in (best_result or []))
-        scale     = max(0.5, min((total_fc / (avg_daily * FORECAST_DAYS)) if avg_daily > 0 else 1.0, 3.0))
         for ing in cursor.fetchall():
-            need = float(ing['target_stock']) * FORECAST_DAYS * scale
-            if need > float(ing['current_stock']):
-                low_stock.append({'ingredient_name': ing['ingredient_name'], 'unit': ing['unit'],
-                                  'current_stock': float(ing['current_stock']),
-                                  'projected_need': round(need, 2),
-                                  'shortage': round(need - float(ing['current_stock']), 2)})
+            projected_need = float(ing['target_stock']) * FORECAST_DAYS
+            to_add         = round(projected_need - float(ing['current_stock']), 2)
+            if to_add > 0:
+                low_stock.append({
+                    'ingredient_name': ing['ingredient_name'],
+                    'unit':            ing['unit'],
+                    'current_stock':   float(ing['current_stock']),
+                    'to_add':          to_add,
+                })
         cursor.close(); conn.close()
     except Exception: pass
 

@@ -136,7 +136,6 @@
     <div class="forecast-restock-card" id="restockCard" style="display:none;">
         <div class="forecast-restock-title">
             🛒 Restock Recommendation
-            <span style="font-size:12px;font-weight:500;color:#a07040;">(based on forecast period)</span>
         </div>
         <div id="restockList"></div>
     </div>
@@ -450,7 +449,7 @@ function renderAccuracy(data) {
     } else {
         infoEl.innerHTML = `<strong>${winnerName}</strong> selected (Prophet: ${pA} · Hybrid: ${hA}). XGBoost needs 20+ days of data (you have ${data.total_rows}).`;
     }
-    infoEl.style.display = 'block';
+    // Keep hidden — only shown when user clicks Dev: Show Model Stats
 }
 
 function renderTable(data) {
@@ -482,21 +481,41 @@ function renderTable(data) {
 }
 
 function renderRestockWarnings(data) {
-    const warnings  = data.low_stock_warnings || [];
-    const card      = document.getElementById('restockCard');
-    const list      = document.getElementById('restockList');
+    const warnings   = data.low_stock_warnings || [];
+    const card       = document.getElementById('restockCard');
+    const list       = document.getElementById('restockList');
 
     if (!warnings.length) { card.style.display = 'none'; return; }
 
-    list.innerHTML = warnings.map(w => `
+    // Build period label from best_predictions dates
+    const bestPred = data.best_predictions || [];
+    let periodHtml = '';
+    if (bestPred.length) {
+        const startDate = bestPred[0].date;
+        const endDate   = bestPred[bestPred.length - 1].date;
+        const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+        periodHtml = `<div style="font-size:12px;color:#888;margin-bottom:10px;">📅 Forecast period: ${fmt(startDate)} – ${fmt(endDate)} (${bestPred.length} day${bestPred.length > 1 ? 's' : ''})</div>`;
+    }
+
+    list.innerHTML = periodHtml + warnings.map(w => {
+        // Stock label: show clearly if negative (already consumed beyond stock)
+        let stockLabel, stockStyle;
+        if (w.current_stock < 0) {
+            stockLabel = `⚠️ Overused by ${Math.abs(w.current_stock)} ${w.unit}`;
+            stockStyle = 'font-size:12px;color:#c0392b;font-weight:600;';
+        } else {
+            stockLabel = `Stock Left: ${w.current_stock} ${w.unit}`;
+            stockStyle = 'font-size:12px;color:#a07040;';
+        }
+        return `
         <div class="restock-item-row">
             <span class="restock-item-name">📦 ${w.ingredient_name}</span>
             <div class="restock-item-info">
-                <span style="font-size:12px;color:#a07040;">Stock: ${w.current_stock} ${w.unit}</span>
-                <span class="restock-shortage-pill">Short: ${w.shortage} ${w.unit}</span>
-                <span class="restock-needed-pill">Need: ${w.projected_need} ${w.unit}</span>
+                <span style="${stockStyle}">${stockLabel}</span>
+                <span class="restock-shortage-pill">To Add: ${w.to_add} ${w.unit}</span>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
 
     card.style.display = 'block';
 }
