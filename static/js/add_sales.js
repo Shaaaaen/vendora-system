@@ -429,11 +429,20 @@ async function submitHistoricalSale() {
             return;
         }
 
-        fetch('/api/record_historical_sale_batch', {
+        const res = await fetch('/api/record_historical_sale_batch', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ records: payload })
         });
+        const result = await res.json();
+
+        if (result.status === 'success') {
+            closeHistoricalSaleModal();
+            await loadSalesHistory();
+            showSaleToast('✅ Historical sales saved!');
+        } else {
+            alert(result.message || t('something_wrong'));
+        }
     }
 }
 
