@@ -504,7 +504,7 @@ function addHistRow() {
 
         </div>
 
-        <button type="button" onclick="this.closest('.hist-card').remove()"style="background:#e74c3c;">
+        <button type="button" onclick="this.closest('.hist-card').remove()" style="margin-top:14px; background:#e74c3c; color:#fff; border:none; padding:7px 16px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;">
             Remove
         </button>
     `;
