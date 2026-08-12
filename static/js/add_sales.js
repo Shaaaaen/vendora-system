@@ -493,7 +493,7 @@ function addHistRow() {
         <div class="hist-header" onclick="toggleHist(this)">
             📆 Sale Date <input type="date" class="m-date" onclick="event.stopPropagation()">
 
-            💰 Total Profit <input type="number" class="m-profit" placeholder="Profit" onclick="event.stopPropagation()">
+            💰 Total Revenue <input type="number" class="m-profit" placeholder="Revenue" onclick="event.stopPropagation()">
 
             🛒 Items Sold <span class="count">0 items</span>
 
@@ -576,7 +576,9 @@ function createProductRow(card) {
     return row;
 }
 
-// Sums unit_profit * quantity across a set of item rows.
+// Sums selling_price * quantity across a set of item rows (i.e. REVENUE, matching
+// how total_amount is used everywhere else in this app — Dashboard's Gross/Net Profit
+// are always derived live as revenue - cost, never stored pre-subtracted).
 // Returns { sum, hasValid } where hasValid is true if at least one row has a product selected.
 function calcItemsProfit(rows) {
     let sum = 0;
@@ -587,7 +589,7 @@ function calcItemsProfit(rows) {
         if (sel && sel.value && qty) {
             const product = histProducts.find(p => p.product_id === parseInt(sel.value));
             if (product) {
-                sum += (product.unit_profit || 0) * (parseInt(qty.value) || 1);
+                sum += (product.selling_price || 0) * (parseInt(qty.value) || 1);
                 hasValid = true;
             }
         }
