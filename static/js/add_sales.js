@@ -343,6 +343,8 @@ async function openHistoricalSaleModal() {
 
     document.getElementById('histItemsList').innerHTML = '';
     document.getElementById('histProfit').value = '';
+    const reqMark = document.getElementById('histProfitReqMark');
+    if (reqMark) reqMark.style.display = 'inline';
     document.getElementById('historicalSaleModal').style.display = 'flex';
 }
 
@@ -361,7 +363,10 @@ async function submitHistoricalSale() {
         const total_profit = parseFloat(document.getElementById('histProfit').value);
 
         if (!sale_date) { alert(t('select_date')); return; }
-        if (isNaN(total_profit) || total_profit < 0) { alert(t('valid_profit')); return; }
+        if (isNaN(total_profit) || total_profit < 0) {
+            alert('Please enter a total profit, or add at least one item so profit can be calculated automatically.');
+            return;
+        }
 
         // Collect optional items
         const rows = document.getElementById('histItemsList').querySelectorAll('div');
@@ -522,7 +527,7 @@ function addProductRow(btn) {
     updateCount(card);
 }
 
-function createProductRow() {
+function createProductRow(card) {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex; gap:8px; align-items:center; margin-bottom:8px;';
 
@@ -547,13 +552,67 @@ function createProductRow() {
     removeBtn.textContent = '✕';
     removeBtn.type = 'button';
     removeBtn.style.cssText = 'background:#e74c3c; color:#fff; border:none; border-radius:6px; padding:6px 10px; cursor:pointer; font-size:13px;';
-    removeBtn.onclick = () => row.remove();
+
+    const onRowChange = () => {
+        if (card) {
+            updateCount(card);
+            recalcCardProfit(card);
+        } else {
+            recalcSingleProfit();
+        }
+    };
+
+    sel.addEventListener('change', onRowChange);
+    qtyInput.addEventListener('input', onRowChange);
+    removeBtn.onclick = () => {
+        row.remove();
+        onRowChange();
+    };
 
     row.appendChild(sel);
     row.appendChild(qtyInput);
     row.appendChild(removeBtn);
 
     return row;
+}
+
+// Sums unit_profit * quantity across a set of item rows.
+// Returns { sum, hasValid } where hasValid is true if at least one row has a product selected.
+function calcItemsProfit(rows) {
+    let sum = 0;
+    let hasValid = false;
+    rows.forEach(row => {
+        const sel = row.querySelector('select');
+        const qty = row.querySelector('input[type="number"]');
+        if (sel && sel.value && qty) {
+            const product = histProducts.find(p => p.product_id === parseInt(sel.value));
+            if (product) {
+                sum += (product.unit_profit || 0) * (parseInt(qty.value) || 1);
+                hasValid = true;
+            }
+        }
+    });
+    return { sum, hasValid };
+}
+
+function recalcSingleProfit() {
+    const rows = Array.from(document.getElementById('histItemsList').querySelectorAll(':scope > div'));
+    const { sum, hasValid } = calcItemsProfit(rows);
+    const reqMark = document.getElementById('histProfitReqMark');
+    if (hasValid) {
+        document.getElementById('histProfit').value = sum.toFixed(2);
+        if (reqMark) reqMark.style.display = 'none';
+    } else if (reqMark) {
+        reqMark.style.display = 'inline';
+    }
+}
+
+function recalcCardProfit(card) {
+    const rows = Array.from(card.querySelectorAll('.m-products > div'));
+    const { sum, hasValid } = calcItemsProfit(rows);
+    if (hasValid) {
+        card.querySelector('.m-profit').value = sum.toFixed(2);
+    }
 }
 
 function updateCount(card) {

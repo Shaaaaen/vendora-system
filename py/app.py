@@ -499,10 +499,20 @@ def get_products_simple():
     conn   = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     cursor.execute("""
-        SELECT product_id, product_name, selling_price
-        FROM product WHERE user_id=%s ORDER BY product_name
+        SELECT p.product_id, p.product_name, p.selling_price,
+               COALESCE(SUM(pi.quantity_used * i.price_per_unit), 0) AS cost
+        FROM product p
+        LEFT JOIN product_ingredient pi ON pi.product_id = p.product_id AND pi.user_id = p.user_id
+        LEFT JOIN ingredient i ON i.ingredient_id = pi.ingredient_id
+        WHERE p.user_id=%s
+        GROUP BY p.product_id, p.product_name, p.selling_price
+        ORDER BY p.product_name
     """, (user_id,))
     data = cursor.fetchall()
+    for d in data:
+        d['selling_price'] = float(d['selling_price'])
+        d['unit_profit']   = round(d['selling_price'] - float(d['cost']), 2)
+        del d['cost']
     cursor.close(); conn.close()
     return jsonify(data)
 
@@ -1037,12 +1047,6 @@ def sync_exchange_rates():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-
-# ─────────────────────────────────────────────────────────────
-# CORE FORECAST ENGINE
-# FIX: Always computes 12 days (max). Tab switching just slices.
-# FIX: Replaced LSTM (TensorFlow, ~500MB) with XGBoost (~5MB).
-# ─────────────────────────────────────────────────────────────
 def _run_forecast_engine(user_id, country_code='MY'):
     import pandas as pd
     import numpy as np
@@ -1419,11 +1423,6 @@ def _background_forecast(user_id, country_code='MY'):
             }
             _forecast_running.pop(user_id, None)
 
-
-# ─────────────────────────────────────────────────────────────
-# FORECAST API
-# FIX: cache stores all 12 days; tabs just slice — no refit
-# ─────────────────────────────────────────────────────────────
 @app.route('/api/forecast')
 def api_forecast():
     user_id = session.get('user_id')
@@ -1639,11 +1638,9 @@ def logout():
     session.clear()
     return redirect(url_for('login_page'))
 
-# ─────────────────────────────────────────────────────────────
 # MIDNIGHT SCHEDULER — pre-computes forecast for all active users
 # Runs at 00:00 Malaysia time every night so graph is instant
 # when users open the page in the morning.
-# ─────────────────────────────────────────────────────────────
 def _scheduled_midnight_refresh():
     """Called at midnight — silently refreshes forecast for all users
     who had sales activity in the last 60 days."""
