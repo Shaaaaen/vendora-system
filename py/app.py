@@ -619,6 +619,60 @@ def record_historical_sale():
     finally:
         cursor.close(); conn.close()
 
+@app.route('/api/record_historical_sale_batch', methods=['POST'])
+def record_historical_sale_batch():
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"status": "error", "message": "Not logged in"}), 401
+    data    = request.json
+    records = data.get('records', [])
+    if not records:
+        return jsonify({"status": "error", "message": "No records provided"}), 400
+
+    from datetime import datetime as dt
+    for rec in records:
+        if not rec.get('sale_date') or rec.get('total_profit') is None:
+            return jsonify({"status": "error", "message": "sale_date and total_profit are required for every record"}), 400
+        try:
+            dt.strptime(rec['sale_date'], '%Y-%m-%d')
+        except ValueError:
+            return jsonify({"status": "error", "message": f"Invalid date format for {rec.get('sale_date')}, use YYYY-MM-DD"}), 400
+
+    conn   = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        conn.start_transaction()
+        new_sale_ids = []
+        for rec in records:
+            cursor.execute("""
+                INSERT INTO sale (user_id, sale_date, total_amount) VALUES (%s, %s, %s)
+            """, (user_id, rec['sale_date'], float(rec['total_profit'])))
+            new_sale_id = cursor.lastrowid
+            new_sale_ids.append(new_sale_id)
+            for item in rec.get('items', []):
+                pid = item.get('product_id')
+                qty = item.get('quantity', 1)
+                if pid:
+                    cursor.execute("""
+                        INSERT INTO sale_item (sale_id, product_id, quantity, user_id) VALUES (%s,%s,%s,%s)
+                    """, (new_sale_id, pid, qty, user_id))
+        conn.commit()
+        with _forecast_lock:
+            _forecast_cache.pop(user_id, None)
+            if _forecast_running.get(user_id, False):
+                _forecast_dirty[user_id] = True
+            else:
+                _forecast_running[user_id] = True
+                t = threading.Thread(target=_background_forecast,
+                                     args=(user_id, 'MY'), daemon=True)
+                t.start()
+        return jsonify({"status": "success", "sale_ids": new_sale_ids})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        cursor.close(); conn.close()
+
 @app.route('/api/get_today_recorded_products')
 def get_today_recorded_products():
     user_id = session.get('user_id')
