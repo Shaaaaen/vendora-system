@@ -273,10 +273,16 @@ async function loadSalesHistory() {
         </div>
         <div class="sales-history-grid">
             ${sales.map((sale, i) => `
-                <div class="sale-history-card" style="animation-delay:${i * 0.05}s">
+                <div class="sale-history-card" style="animation-delay:${i * 0.05}s" id="saleCard-${sale.sale_id}">
                     <div class="shc-top">
                         <span class="shc-badge">Sale #${sale.sale_id}</span>
-                        <span class="shc-date">${formatDate(sale.sale_date)}</span>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="shc-date">${formatDate(sale.sale_date)}</span>
+                            <button type="button" onclick="deleteSaleRecord(${sale.sale_id})"
+                                style="background:#e74c3c; color:#fff; border:none; border-radius:6px; padding:4px 9px; cursor:pointer; font-size:12px;">
+                                🗑️
+                            </button>
+                        </div>
                     </div>
                     <div class="shc-amount">${fmtS(sale.total_amount)}</div>
                     <div class="shc-items">
@@ -290,6 +296,21 @@ async function loadSalesHistory() {
                 </div>
             `).join('')}
         </div>`;
+}
+
+async function deleteSaleRecord(sale_id) {
+    if (!confirm('Delete this sale record? This cannot be undone, and your AI Forecast will be regenerated automatically.')) {
+        return;
+    }
+    const res = await fetch(`/api/delete_sale/${sale_id}`, { method: 'DELETE' });
+    const result = await res.json();
+
+    if (result.status === 'success') {
+        showSaleToast('🗑️ Sale record deleted');
+        await loadSalesHistory();
+    } else {
+        alert(result.message || t('something_wrong'));
+    }
 }
 
 function quickAddForSelectedDate() {

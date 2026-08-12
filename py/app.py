@@ -158,8 +158,6 @@ def allowed_file(filename):
 @app.route('/api/check_session')
 def check_session():
     if session.get('user_id'):
-        # FIX: was returning {"loggedIn": True} but login.js was checking data.logged_in
-        # Keeping camelCase here AND fixing login.js to match — both consistent now
         return jsonify({"loggedIn": True})
     return jsonify({"loggedIn": False})
 
@@ -716,6 +714,40 @@ def get_sales():
         s['items'] = cursor.fetchall()
     cursor.close(); conn.close()
     return jsonify(sales)
+
+@app.route('/api/delete_sale/<int:sale_id>', methods=['DELETE'])
+def delete_sale(sale_id):
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"status": "error", "message": "Not logged in"}), 401
+    conn   = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        conn.start_transaction()
+        cursor.execute("SELECT sale_id FROM sale WHERE sale_id=%s AND user_id=%s", (sale_id, user_id))
+        if not cursor.fetchone():
+            return jsonify({"status": "error", "message": "Sale not found"}), 404
+        cursor.execute("DELETE FROM sale_item WHERE sale_id=%s AND user_id=%s", (sale_id, user_id))
+        cursor.execute("DELETE FROM sale WHERE sale_id=%s AND user_id=%s", (sale_id, user_id))
+        conn.commit()
+        # ── Invalidate cache + handle in-flight forecast (same pattern as every ──
+        # other sale-mutating route — deleting a sale must never leave a stale
+        # cached forecast lying around) ────────────────────────────────────────
+        with _forecast_lock:
+            _forecast_cache.pop(user_id, None)
+            if _forecast_running.get(user_id, False):
+                _forecast_dirty[user_id] = True
+            else:
+                _forecast_running[user_id] = True
+                t = threading.Thread(target=_background_forecast,
+                                     args=(user_id, 'MY'), daemon=True)
+                t.start()
+        return jsonify({"status": "success"})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        cursor.close(); conn.close()
 
 # --- DASHBOARD ROUTES ---
 @app.route('/dashboard')
@@ -1638,9 +1670,11 @@ def logout():
     session.clear()
     return redirect(url_for('login_page'))
 
+# ─────────────────────────────────────────────────────────────
 # MIDNIGHT SCHEDULER — pre-computes forecast for all active users
 # Runs at 00:00 Malaysia time every night so graph is instant
 # when users open the page in the morning.
+# ─────────────────────────────────────────────────────────────
 def _scheduled_midnight_refresh():
     """Called at midnight — silently refreshes forecast for all users
     who had sales activity in the last 60 days."""
